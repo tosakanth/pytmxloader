@@ -27,12 +27,7 @@ import StringIO
 import os.path
 #import codecs
 
-# TODO: ideas: save indexed_tiles as {type:data} so no image loader is needed
-# user would have to write its own image loading
-# different types would be : {gid : ('img_parts', (margin, spacing, path, tile_w, tile_h, colorkey))}
-#                            {gid : ('img_path', ('C:/...', colorkey)}
-#                            {gid : ('file_like', (file_like_obj, colorkey))}
-#
+# TODO: 
 # maybe use cStringIO instead of StringIO
 
 #-------------------------------------------------------------------------------
