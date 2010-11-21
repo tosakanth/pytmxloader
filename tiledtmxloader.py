@@ -912,23 +912,26 @@ def demo_pygame(file_name):
                             img_idx = layer.content2D[xpos][ypos]
                             idx += 1
                             if img_idx:
-                                # get the actual image and its offset
-                                offx, offy, screen_img = world_map.indexed_tiles[img_idx]
-                                # only draw the tiles that are relly visible (speed up)
-                                if x >= cam_offset_x - 3 * world_map.tilewidth and x + cam_offset_x <= screen_width + world_map.tilewidth\
-                                   and y >= cam_offset_y - 3 * world_map.tileheight and y + cam_offset_y <= screen_height + 3 * world_map.tileheight:
-                                    if screen_img.get_alpha():
+                                try:
+                                    # get the actual image and its offset
+                                    offx, offy, screen_img = world_map.indexed_tiles[img_idx]
+                                    # only draw the tiles that are relly visible (speed up)
+                                    if x >= cam_offset_x - 3 * world_map.tilewidth and x + cam_offset_x <= screen_width + world_map.tilewidth\
+                                       and y >= cam_offset_y - 3 * world_map.tileheight and y + cam_offset_y <= screen_height + 3 * world_map.tileheight:
+                                        if screen_img.get_alpha():
+                                            screen_img = screen_img.convert_alpha()
+                                        else:
+                                            screen_img = screen_img.convert()
+                                            if layer.opacity > -1:
+                                                #print 'per surf alpha', layer.opacity
+                                                screen_img.set_alpha(None)
+                                                alpha_value = int(255. * float(layer.opacity))
+                                                screen_img.set_alpha(alpha_value)
                                         screen_img = screen_img.convert_alpha()
-                                    else:
-                                        screen_img = screen_img.convert()
-                                        if layer.opacity > -1:
-                                            #print 'per surf alpha', layer.opacity
-                                            screen_img.set_alpha(None)
-                                            alpha_value = int(255. * float(layer.opacity))
-                                            screen_img.set_alpha(alpha_value)
-                                    screen_img = screen_img.convert_alpha()
-                                    # draw image at right position using its offset
-                                    screen.blit(screen_img, (x + cam_offset_x + offx, y + cam_offset_y + offy))
+                                        # draw image at right position using its offset
+                                        screen.blit(screen_img, (x + cam_offset_x + offx, y + cam_offset_y + offy))
+                                except Exception, e:
+                                    print str(e)
             # map objects
             for obj_group in world_map.object_groups:
                 goffx = obj_group.x
@@ -950,7 +953,9 @@ def demo_pygame(file_name):
 #-------------------------------------------------------------------------------
 
 def demo_pyglet(file_name):
-    """Loads and views a map using pyglet.
+    """Thanks to: HydroKirby from #pyglet on freenode.org
+    
+    Loads and views a map using pyglet.
 
     Holding the arrow keys will scroll along the map.
     Holding the left shift key will make you scroll faster.
