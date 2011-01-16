@@ -21,8 +21,6 @@ if __debug__:
 
 import sys
 from xml.dom import minidom, Node
-import base64
-import gzip
 import StringIO
 import os.path
 #import codecs
@@ -559,25 +557,38 @@ class TileLayer(object):
         Converts the contents in a list of integers which are the gid of the used
         tiles. If necessairy it decodes and uncompresses the contents.
         """
-        s = self.encoded_content
+        self.decoded_content = []
         if self.encoded_content:
+            s = self.encoded_content
             if self.encoding:
-                if self.encoding == u'base64':
+                if self.encoding.lower() == u'base64':
                     s = decode_base64(s)
+                elif self.encoding.lower() == u'csv':
+                    list_of_lines = s.split()
+                    for line in list_of_lines:
+                        self.decoded_content.extend(line.split(','))
+                    self.decoded_content = map(int, [val for val in self.decoded_content if val])
+                    s = ""
                 else:
                     raise Exception(u'unknown data encoding %s' % (self.encoding))
+            else:
+                # in the case of xml the encoded_content already contains a list of integers
+                self.decoded_content = map(int, self.encoded_content)
+                s = ""
             if self.compression:
                 if self.compression == u'gzip':
                     s = decompress_gzip(s)
+                elif self.compression == u'zlib':
+                    s = decompress_zlib(s)
                 else:
                     raise Exception(u'unknown data compression %s' %(self.compression))
         else:
             raise Exception(u'no encoded content to decode')
-        self.decoded_content = []
         for idx in xrange(0, len(s), 4):
             val = ord(str(s[idx])) | (ord(str(s[idx + 1])) << 8) | \
                  (ord(str(s[idx + 2])) << 16) | (ord(str(s[idx + 3])) << 24)
             self.decoded_content.append(val)
+        #print len(self.decoded_content)
         # generate the 2D version
         self._gen_2D()
 
@@ -675,6 +686,7 @@ def decode_base64(in_str):
 
     :returns: decoded string
     """
+    import base64
     return base64.decodestring(in_str)
 
 #-------------------------------------------------------------------------------
@@ -688,6 +700,7 @@ def decompress_gzip(in_str):
 
     :returns: uncompressed string
     """
+    import gzip
     # gzip can only handle file object therefore using StringIO
     copmressed_stream = StringIO.StringIO(in_str)
     gzipper = gzip.GzipFile(fileobj=copmressed_stream)
@@ -695,6 +708,20 @@ def decompress_gzip(in_str):
     gzipper.close()
     return s
 
+#-------------------------------------------------------------------------------
+def decompress_zlib(in_str):
+    u"""
+    Uncompresses a zlib string and returns it.
+
+    :Parameters:
+        in_str : string
+            zlib compressed string
+
+    :returns: uncompressed string
+    """
+    import zlib
+    s = zlib.decompress(in_str)
+    return s
 #-------------------------------------------------------------------------------
 def printer(obj, ident=''):
     u"""
@@ -765,7 +792,16 @@ class TileMapParser(object):
         self._set_attributes(layer_node, layer)
         for node in self._get_nodes(layer_node.childNodes, u'data'):
             self._set_attributes(node, layer)
-            layer.encoded_content = node.lastChild.nodeValue
+            if layer.encoding:
+                layer.encoded_content = node.lastChild.nodeValue
+            else:
+                #print 'has childnodes', node.hasChildNodes()
+                layer.encoded_content = []
+                for child in node.childNodes:
+                    if child.nodeType == Node.ELEMENT_NODE and child.nodeName == "tile":
+                        val = child.attributes["gid"].nodeValue 
+                        #print child, val
+                        layer.encoded_content.append(val)
         world_map.layers.append(layer)
 
     def _build_world_map(self, world_node):
@@ -967,10 +1003,11 @@ def demo_pyglet(file_name):
 
     world_map = TileMapParser().parse_decode(file_name)
     # delta is the x/y position of the map view.
-    # delta is a list because the scoping is different for immutable types.
+    # delta is a list because it can be accessed from the on_draw function.
     # This list can be used within the update method.
     delta = [0.0, 0.0]
-    window = pyglet.window.Window()
+    frames_per_sec = 1.0 / 60.0
+    window = pyglet.window.Window(640, 480)
 
     @window.event
     def on_draw():
@@ -986,7 +1023,12 @@ def demo_pyglet(file_name):
     world_map.load(ImageLoaderPyglet())
 
     def update(dt):
-        speed = 3.0 + keys[pyglet.window.key.LSHIFT] * 6.0
+        # The speed is 3 by default.
+        # When left Shift is held, the speed increases.
+        # The speed interpolates based on time passed, so the demo navigates
+        # at a reasonable pace even on huge maps.
+        speed = (3.0 + keys[pyglet.window.key.LSHIFT] * 6.0) * \
+                (dt / frames_per_sec)
         if keys[pyglet.window.key.LEFT]:
             delta[0] += speed
         if keys[pyglet.window.key.RIGHT]:
@@ -998,28 +1040,27 @@ def demo_pyglet(file_name):
 
     # Generate the graphics for every visible tile.
     batch = pyglet.graphics.Batch()
-    groups = []
     sprites = []
-    for group_num, layer in enumerate(world_map.layers[:]):
+    for group_num, layer in enumerate(world_map.layers):
         if layer.visible is False:
             continue
-        groups.append(pyglet.graphics.OrderedGroup(group_num))
-        for xtile in range(layer.width):
-            for ytile in range(layer.height):
+        for ytile in range(layer.height):
+            group = pyglet.graphics.OrderedGroup(group_num)
+            # To compensate for pyglet's upside-down y-axis, the Sprites are
+            # placed in rows that are backwards compared to what was loaded
+            # into the map. The next operation puts all rows upside-down.
+            for xtile in range(layer.width):
+                #layer.content2D[xtile].reverse()
                 image_id = layer.content2D[xtile][ytile]
                 if image_id:
                     # o_x and o_y are offsets. They are not helpful here.
                     o_x, o_y, image_file = world_map.indexed_tiles[image_id]
-                    # To compensate for pyglet's upside-down y-axis, the
-                    # Sprites are placed in rows that are backwards compared
-                    # to what was loaded into the map. The "max - current"
-                    # formula does this reversal.
                     sprites.append(pyglet.sprite.Sprite(image_file,
-                        xtile * world_map.tilewidth,
-                        layer.pixel_height - (ytile+1) * world_map.tileheight,
-                        batch=batch, group=groups[group_num]))
+                        world_map.tilewidth * xtile,
+                        world_map.tileheight * (layer.height - ytile),
+                        batch=batch, group=group))
 
-    pyglet.clock.schedule_interval(update, 1.0 / 60.0)
+    pyglet.clock.schedule_interval(update, frames_per_sec)
     pyglet.app.run()
 
 
