@@ -7,8 +7,9 @@ from http://mapeditor.org/ .
 It loads the \*.tmx files produced by Tiled.
 """
 
-__version__ = u'$Id$'
-__author__ = u'DR0ID_ @ 2009'
+__version__ = 2.2
+__revision__ = u'$Id$'
+__author__ = u'DR0ID_ @ 2009-2011'
 
 if __debug__:
     import sys
