@@ -17,7 +17,7 @@ TODO:
 
 """
 
-__version__ = 2.2
+__version__ = "2.2.1.0"
 __revision__ = u'$Id$'
 __author__ = u'DR0ID_ @ 2009-2011'
 
@@ -132,30 +132,24 @@ class ImageLoaderPygame(IImageLoader):
         return img
 
     def load_image_part(self, filename, x, y, w, h, colorkey=None):
+        source_img = self.load_image(filename, colorkey)
+        ## ISSUE 4:
+        ##      The following usage seems to be broken in pygame (1.9.1.):
+        ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
+        img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
         source_rect = self.pygame.Rect(x, y, w, h)
-        img = self._img_cache.get(filename, None)
-        if img is None:
-            img = self.pygame.image.load(filename)
-            self._img_cache[filename] = img
-        img_part = self.pygame.Surface((w, h), 0, img)
-        img_part.blit(img, (0, 0), source_rect)
+        img_part.blit(source_img, (0, 0), source_rect)
         if colorkey:
             img_part.set_colorkey(colorkey)
         return img_part
 
     def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
-        source_img = self._img_cache.get(filename, None)
-        if source_img is None:
-            source_img = self.pygame.image.load(filename)
-            self._img_cache[filename] = source_img
+        source_img = self.load_image(filename, colorkey)
         w, h = source_img.get_size()
         images = []
         for y in xrange(margin, h, tile_height + spacing):
             for x in xrange(margin, w, tile_width + spacing):
-                img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
-                img_part.blit(source_img, (0, 0), self.pygame.Rect(x, y, tile_width, tile_height))
-                if colorkey:
-                    img_part.set_colorkey(colorkey)
+                img_part = self.load_image_part(filename, x, y, tile_width, tile_height, colorkey)
                 images.append(img_part)
         return images
 
@@ -194,26 +188,19 @@ class ImageLoaderPyglet(IImageLoader):
         return img
 
     def load_image_part(self, filename, x, y, w, h, colorkey=None):
-        img = self._img_cache.get(filename, None)
-        if img is None:
-            img = self.pyglet.image.load(filename)
-            self._img_cache[filename] = img
+        image = self.load_image(filename, colorkey)
         img_part = image.get_region(x, y, w, h)
         return img_part
 
 
     def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
-        source_img = self._img_cache.get(filename, None)
-        if source_img is None:
-            source_img = self.pyglet.image.load(filename)
-            self._img_cache[filename] = source_img
+        source_img = self.load_image(filename, colorkey)
         images = []
         # Reverse the map column reading to compensate for pyglet's y-origin.
         for y in xrange(source_img.height - tile_height, margin - tile_height,
             -tile_height - spacing):
             for x in xrange(margin, source_img.width, tile_width + spacing):
-                #img_part = source_img.get_region(x, y, tile_width, tile_height)
-                img_part = source_img.get_region(x, y - spacing, tile_width, tile_height)
+                img_part = self.load_image_part(filename, x, y - spacing, tile_width, tile_height)
                 images.append(img_part)
         return images
 
