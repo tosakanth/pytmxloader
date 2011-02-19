@@ -5,6 +5,16 @@ u"""
 TileMap loader for python for Tiled, a generic tile map editor
 from http://mapeditor.org/ .
 It loads the \*.tmx files produced by Tiled.
+
+
+TODO: 
+ - maybe use cStringIO instead of StringIO
+ - pyglet demo: better rendering
+ - pygame demo: better rendering
+ - test if object gid is already read in and resolved
+
+
+
 """
 
 __version__ = 2.2
@@ -26,8 +36,6 @@ import StringIO
 import os.path
 #import codecs
 
-# TODO: 
-# maybe use cStringIO instead of StringIO
 
 #-------------------------------------------------------------------------------
 class IImageLoader(object):
@@ -940,6 +948,8 @@ def demo_pygame(file_name):
                 if layer.visible:
                     idx = 0
                     # loop over all tiles
+                    # TODO: [21:03]	thorbjorn: DR0ID_: You can generally determine the range of tiles that are visible before your drawing loop, which is much faster than looping over all tiles and checking whether it is visible for each of them.
+                    
                     for ypos in xrange(0, layer.height):
                         for xpos in xrange(0, layer.width):
                             # add offset in number of tiles
@@ -953,6 +963,7 @@ def demo_pygame(file_name):
                                     # get the actual image and its offset
                                     offx, offy, screen_img = world_map.indexed_tiles[img_idx]
                                     # only draw the tiles that are relly visible (speed up)
+                                    # TODO: move this if before the for loops as suggested by thorbjorn
                                     if x >= cam_offset_x - 3 * world_map.tilewidth and x + cam_offset_x <= screen_width + world_map.tilewidth\
                                        and y >= cam_offset_y - 3 * world_map.tileheight and y + cam_offset_y <= screen_height + 3 * world_map.tileheight:
                                         if screen_img.get_alpha():
@@ -997,6 +1008,14 @@ def demo_pyglet(file_name):
     Holding the arrow keys will scroll along the map.
     Holding the left shift key will make you scroll faster.
     Pressing the escape key ends the application.
+    
+    TODO:
+    Maybe use this to put topleft as origin:
+    
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0.0, (double)mTarget->w, (double)mTarget->h, 0.0, -1.0, 1.0);
+    
     """
 
     import pyglet
@@ -1017,6 +1036,18 @@ def demo_pyglet(file_name):
         glLoadIdentity()
         # Move the "eye" to the current location on the map.
         glTranslatef(delta[0], delta[1], 0.0)
+        # TODO: [21:03]	thorbjorn: DR0ID_: You can generally determine the range of tiles that are visible before your drawing loop, which is much faster than looping over all tiles and checking whether it is visible for each of them.
+        # [21:06]	DR0ID_: probably would have to rewrite the pyglet demo to use a similar render loop as you mentioned
+        # [21:06]	thorbjorn: Yeah.
+        # [21:06]	DR0ID_: I'll keep your suggestion in mind, thanks
+        # [21:06]	thorbjorn: I haven't written a specific OpenGL renderer yet, so not sure what's the best approach for a tile map.
+        # [21:07]	thorbjorn: Best to create a single texture with all your tiles, bind it, set up your vertex arrays and fill it with the coordinates of the tiles currently on the screen, and then let OpenGL draw the bunch.
+        # [21:08]	DR0ID_: for each layer?
+        # [21:08]	DR0ID_: yeah, probably a good approach
+        # [21:09]	thorbjorn: Ideally for all layers at the same time, if you don't have to draw anything in between.
+        # [21:09]	DR0ID_: well, the NPC and other dynamic things need to be drawn in between, right?
+        # [21:09]	thorbjorn: Right, so maybe once for the bottom layers, then your complicated stuff, and then another time for the layers on top.
+        
         batch.draw()
 
     keys = pyglet.window.key.KeyStateHandler()
