@@ -7,7 +7,7 @@ from http://mapeditor.org/ .
 It loads the \*.tmx files produced by Tiled.
 
 
-TODO: 
+TODO:
  - maybe use cStringIO instead of StringIO
  - pyglet demo: better rendering
  - pygame demo: better rendering
@@ -17,7 +17,7 @@ TODO:
 
 """
 
-__version__ = "2.2.1.0"
+__version__ = "2.3.0.0"
 __revision__ = u'$Id$'
 __author__ = u'DR0ID_ @ 2009-2011'
 
@@ -752,12 +752,33 @@ class TileMapParser(object):
     def _build_tile_set(self, tile_set_node, world_map):
         tile_set = TileSet()
         self._set_attributes(tile_set_node, tile_set)
+        if hasattr(tile_set, "source"):
+            tile_set = self._parse_tsx(tile_set.source, tile_set, world_map)
+        else:
+            tile_set = self._get_tile_set(tile_set_node, tile_set)
+        world_map.tile_sets.append(tile_set)
+
+    def _parse_tsx(self, file_name, tile_set, world_map):
+        # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
+        file = None
+        try:
+            file = open(file_name, "rb")
+            dom = minidom.parseString(file.read())
+        finally:
+            if file:
+                file.close()
+        for node in self._get_nodes(dom.childNodes, 'tileset'):
+            tile_set = self._get_tile_set(node, tile_set)
+            break;
+        return tile_set
+
+    def _get_tile_set(self, tile_set_node, tile_set):
         for node in self._get_nodes(tile_set_node.childNodes, u'image'):
             self._build_tile_set_image(node, tile_set)
         for node in self._get_nodes(tile_set_node.childNodes, u'tile'):
             self._build_tile_set_tile(node, tile_set)
         self._set_attributes(tile_set_node, tile_set)
-        world_map.tile_sets.append(tile_set)
+        return tile_set
 
     def _build_tile_set_image(self, image_node, tile_set):
         image = TileImage()
@@ -795,7 +816,7 @@ class TileMapParser(object):
                 layer.encoded_content = []
                 for child in node.childNodes:
                     if child.nodeType == Node.ELEMENT_NODE and child.nodeName == "tile":
-                        val = child.attributes["gid"].nodeValue 
+                        val = child.attributes["gid"].nodeValue
                         #print child, val
                         layer.encoded_content.append(val)
         world_map.layers.append(layer)
@@ -855,7 +876,14 @@ class TileMapParser(object):
         :return: instance of TileMap
         """
         #dom = minidom.parseString(codecs.open(file_name, "r", "utf-8").read())
-        dom = minidom.parseString(open(file_name, "rb").read())
+        # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
+        file = None
+        try:
+            file = open(file_name, "rb")
+            dom = minidom.parseString(file.read())
+        finally:
+            if file:
+                file.close()
         for node in self._get_nodes(dom.childNodes, 'map'):
             world_map = self._build_world_map(node)
             break
@@ -936,7 +964,7 @@ def demo_pygame(file_name):
                     idx = 0
                     # loop over all tiles
                     # TODO: [21:03]	thorbjorn: DR0ID_: You can generally determine the range of tiles that are visible before your drawing loop, which is much faster than looping over all tiles and checking whether it is visible for each of them.
-                    
+
                     for ypos in xrange(0, layer.height):
                         for xpos in xrange(0, layer.width):
                             # add offset in number of tiles
@@ -989,20 +1017,20 @@ def demo_pygame(file_name):
 
 def demo_pyglet(file_name):
     """Thanks to: HydroKirby from #pyglet on freenode.org
-    
+
     Loads and views a map using pyglet.
 
     Holding the arrow keys will scroll along the map.
     Holding the left shift key will make you scroll faster.
     Pressing the escape key ends the application.
-    
+
     TODO:
     Maybe use this to put topleft as origin:
-    
+
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         glOrtho(0.0, (double)mTarget->w, (double)mTarget->h, 0.0, -1.0, 1.0);
-    
+
     """
 
     import pyglet
@@ -1034,7 +1062,7 @@ def demo_pyglet(file_name):
         # [21:09]	thorbjorn: Ideally for all layers at the same time, if you don't have to draw anything in between.
         # [21:09]	DR0ID_: well, the NPC and other dynamic things need to be drawn in between, right?
         # [21:09]	thorbjorn: Right, so maybe once for the bottom layers, then your complicated stuff, and then another time for the layers on top.
-        
+
         batch.draw()
 
     keys = pyglet.window.key.KeyStateHandler()
