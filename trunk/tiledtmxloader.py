@@ -7,14 +7,6 @@ from http://mapeditor.org/ .
 It loads the \*.tmx files produced by Tiled.
 
 
-TODO:
- - maybe use cStringIO instead of StringIO
- - pyglet demo: better rendering
- - pygame demo: better rendering
- - test if object gid is already read in and resolved
-
-
-
 """
 
 __version__ = "2.3.0.0"
@@ -34,7 +26,6 @@ import sys
 from xml.dom import minidom, Node
 import StringIO
 import os.path
-#import codecs
 
 
 #-------------------------------------------------------------------------------
@@ -755,10 +746,15 @@ class TileMapParser(object):
         if hasattr(tile_set, "source"):
             tile_set = self._parse_tsx(tile_set.source, tile_set, world_map)
         else:
-            tile_set = self._get_tile_set(tile_set_node, tile_set)
+            tile_set = self._get_tile_set(tile_set_node, tile_set, self.map_file_name)
         world_map.tile_sets.append(tile_set)
 
     def _parse_tsx(self, file_name, tile_set, world_map):
+        # the *.tsx file is probably relative to the *.tmx file
+        if not os.path.isabs(file_name):
+            print "map file name", self.map_file_name
+            file_name = self._get_abs_path(self.map_file_name, file_name)
+        print "tsx filename: ", file_name
         # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
         file = None
         try:
@@ -768,25 +764,32 @@ class TileMapParser(object):
             if file:
                 file.close()
         for node in self._get_nodes(dom.childNodes, 'tileset'):
-            tile_set = self._get_tile_set(node, tile_set)
+            tile_set = self._get_tile_set(node, tile_set, file_name)
             break;
         return tile_set
+        
+    def _get_abs_path(self, base, relative):
+            if os.path.isfile(base):
+                base = os.path.dirname(base)
+            return os.path.abspath(os.path.join(base, relative))
 
-    def _get_tile_set(self, tile_set_node, tile_set):
+    def _get_tile_set(self, tile_set_node, tile_set, base_path):
         for node in self._get_nodes(tile_set_node.childNodes, u'image'):
-            self._build_tile_set_image(node, tile_set)
+            self._build_tile_set_image(node, tile_set, base_path)
         for node in self._get_nodes(tile_set_node.childNodes, u'tile'):
             self._build_tile_set_tile(node, tile_set)
         self._set_attributes(tile_set_node, tile_set)
         return tile_set
 
-    def _build_tile_set_image(self, image_node, tile_set):
+    def _build_tile_set_image(self, image_node, tile_set, base_path):
         image = TileImage()
         self._set_attributes(image_node, image)
         # id of TileImage has to be set!! -> Tile.TileImage will only have id set
         for node in self._get_nodes(image_node.childNodes, u'data'):
             self._set_attributes(node, image)
             image.content = node.childNodes[0].nodeValue
+        image.source = self._get_abs_path(base_path, image.source)
+        printer(image)
         tile_set.images.append(image)
 
     def _build_tile_set_tile(self, tile_set_node, tile_set):
@@ -875,11 +878,11 @@ class TileMapParser(object):
         Parses the given map. Does no decoding nor loading the data.
         :return: instance of TileMap
         """
-        #dom = minidom.parseString(codecs.open(file_name, "r", "utf-8").read())
         # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
+        self.map_file_name = os.path.abspath(file_name)
         file = None
         try:
-            file = open(file_name, "rb")
+            file = open(self.map_file_name, "rb")
             dom = minidom.parseString(file.read())
         finally:
             if file:
@@ -887,7 +890,7 @@ class TileMapParser(object):
         for node in self._get_nodes(dom.childNodes, 'map'):
             world_map = self._build_world_map(node)
             break
-        world_map.map_file_name = os.path.abspath(file_name)
+        world_map.map_file_name = self.map_file_name
         world_map.convert()
         return world_map
 
