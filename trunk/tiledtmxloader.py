@@ -9,8 +9,8 @@ It loads the \*.tmx files produced by Tiled.
 
 """
 
-__version__ = "2.3.1.1"
-__revision__ = u'$Id$'
+__version__ = "2.3.1.$Rev$"
+__revision__ = u'$Id: tiledtmxloader.py 13 2011-02-22 19:29:13Z dr0iddr0id@gmail.com $'
 __author__ = u'DR0ID_ @ 2009-2011'
 
 if __debug__:
@@ -940,6 +940,13 @@ class TileMapParser(object):
 
 class RendererPygame(object):
 
+    class Sprite(object):
+        def __init__(self, image, rect, source_rect=None, flags=0):
+            self.image = image
+            self.rect = rect
+            self.source_rect = source_rect
+            self.flags = flags
+
     # TODO: methods: add_sprite/remove_sprite
     # TODO: collapse/uncollapse
     # TODO: do calculations of set_camera_position per layer
@@ -951,19 +958,37 @@ class RendererPygame(object):
         self._cam_height = 10
         self._visible_x_range = []
         self._visible_y_range = []
-        
+
         self._maincache = {}
         self._backcache = {}
         self._cachemax = 400
         self._cachestart = 70
-        
+
         self._layer_sprites = {} # {layer_id:[sprites]}
 
+    def add_sprite(self, layer_id, sprite):
+        if layer_id not in self._layer_sprites:
+            self._layer_sprites[layer_id] = []
+        self._layer_sprites[layer_id].append(sprite)
+
+    def add_sprites(self, layer_id, sprites):
+        for sprite in sprites:
+            self.add_sprite(layer_id, sprite)
+
+    def remove_sprite(self, layer_id, sprite):
+        sprites = self._layer_sprites.get(layer_id)
+        if sprites is not None and sprite in sprites:
+            sprites.remove(sprite)
+            if len(sprites) == 0:
+                del self._layer_sprites[layer_id]
+
     def set_camera_position(self, offset_x, offset_y, width, height, margin=1):
-        self._cam_offset_x = offset_x
-        self._cam_offset_y = offset_y
+        self._cam_offset_x = int(offset_x)
+        self._cam_offset_y = int(offset_y)
         self._cam_width = width
         self._cam_height = height
+
+        # this has to be done for each layer for collapsing
         tile_w = self._world_map.tilewidth
         tile_h = self._world_map.tileheight
         left = int(round(float(offset_x) / tile_w)) - margin
@@ -977,32 +1002,37 @@ class RendererPygame(object):
         self._visible_x_range = range(left, right)
         self._visible_y_range = range(top, bottom)
 
-    def render_layer(self, surf, layer_id):
+    def render_layer(self, surf, layer_id, surf_blit=None, sort_key=lambda spr: spr.rect.y):
         layer = self._world_map.layers[layer_id]
         if layer.visible:
+
+            # sprites
+            spr_idx = 0
+            len_sprites = 0
+            sprites = self._layer_sprites.get(layer_id)
+            if sprites:
+                if sort_key:
+                    sprites.sort(key=sort_key)
+                sprite = sprites[0]
+                len_sprites = len(sprites)
+
             # optimizations
-            surf_blit = surf.blit
+            if surf_blit is None:
+                surf_blit = surf.blit
             layer_content2D = layer.content2D
             self__world_map_indexed_tiles = self._world_map.indexed_tiles
             self__world_map_tilewidth = self._world_map.tilewidth
             self__world_map_tileheight = self._world_map.tileheight
             self__cam_offset_x = self._cam_offset_x
             self__cam_offset_y = self._cam_offset_y
-            # sprites
-            spr_idx = 0
-            len_sprites = 0
-            sprites = self._layer_sprites.get(layer_id)
-            if sprites:
-                sprites.sort(key=lambda sprite: sprite.rect.y)
-                sprite = sprites[0]
-                len_sprites = len(sprites)
-            
+
+            # render
             for ypos in self._visible_y_range:
                 # TODO: layer.y and layer.x are not supported well now
                 screen_tile_y =(ypos + layer.y) * self__world_map_tileheight - self__cam_offset_y
                 # draw sprites in this layer
                 while spr_idx < len_sprites and screen_tile_y < sprite.rect.y - self__cam_offset_y <= screen_tile_y + self__world_map_tileheight:
-                    surf_blit(sprite.image, sprite.rect.move(-self__cam_offset_x, -self__cam_offset_y - sprite.rect.height))
+                    surf_blit(sprite.image, sprite.rect.move(-self__cam_offset_x, -self__cam_offset_y - sprite.rect.height), sprite.source_rect, sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
                         sprite = sprites[spr_idx]
@@ -1031,7 +1061,7 @@ class RendererPygame(object):
 def demo_pygame(file_name):
     pygame = __import__('pygame')
 
-    # parser the map
+    # parser the map (it is done here to initialize the window the same size as the map if it is small enough)
     world_map = TileMapParser().parse_decode(file_name)
 
     # init pygame and set up a screen
@@ -1042,14 +1072,13 @@ def demo_pygame(file_name):
     screen = pygame.display.set_mode((screen_width, screen_height), pygame.DOUBLEBUF)
 
     # load the images using pygame
-    world_map.load(ImageLoaderPygame())
-    layer_range = range(len(world_map.layers))
+    image_loader = ImageLoaderPygame()
+    world_map.load(image_loader)
     #printer(world_map)
 
     # prepare map rendering
     assert world_map.orientation == "orthogonal"
     renderer = RendererPygame(world_map)
-
 
     # cam_offset is for scrolling
     cam_offset_x = 0
@@ -1057,38 +1086,42 @@ def demo_pygame(file_name):
 
     # variables
     frames_per_sec = 60.0
+    clock = pygame.time.Clock()
     running = True
     draw_obj = True
-    clock = pygame.time.Clock()
+    show_message = True
     font = pygame.font.Font(None, 15)
     s = "Frames Per Second: 0.0"
-    message = font.render(s, 0, (255,255,255)).convert()
-    
+    message = font.render(s, 0, (255,255,255), (0, 0, 0)).convert()
+
     # for timed fps update
     pygame.time.set_timer(pygame.USEREVENT, 1000)
-    
+
+    # add additional sprites
+    num_sprites = 1
+    my_sprites = []
+    for i in range(num_sprites):
+        j = num_sprites - i
+        image = pygame.Surface((20, j*40.0/num_sprites+10))
+        image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255))
+        sprite = RendererPygame.Sprite(image, image.get_rect())
+        my_sprites.append(sprite)
+    renderer.add_sprites(1, my_sprites)
+
     # optimizations
+    layer_range = range(len(world_map.layers))
+    num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
     clock_tick = clock.tick
     pygame_event_get = pygame.event.get
     pygame_key_get_pressed = pygame.key.get_pressed
     renderer_render_layer = renderer.render_layer
     renderer_set_camera_position = renderer.set_camera_position
     pygame_display_flip = pygame.display.flip
-    
-    # add sprites (TODO)
-    renderer._layer_sprites[1] = []
-    num_sprites = 100
-    for i in range(num_sprites):
-        sprite = pygame.sprite.Sprite()
-        sprite.image = pygame.Surface((20, i*40.0/num_sprites+10))
-        sprite.image.fill(((255+200*i)%255, (2*i+255)%255, (5*i)%255))
-        sprite.rect = sprite.image.get_rect()
-        renderer._layer_sprites[1].append(sprite)
 
     # mainloop
     while running:
         dt = clock_tick()#60.0)
-        
+
         # event handling
         for event in pygame_event_get():
             if event.type == pygame.QUIT:
@@ -1098,9 +1131,13 @@ def demo_pygame(file_name):
                     running = False
                 elif event.key == pygame.K_F1:
                     print "fps:", clock.get_fps()
-                    print renderer._visible_x_range, renderer._visible_y_range
+                    show_message = not show_message
+                    print "show info:", show_message
+                    # print "visible range x:", renderer._visible_x_range
+                    # print "visible range y:", renderer._visible_y_range
                 elif event.key == pygame.K_F2:
                     draw_obj = not draw_obj
+                    print "show objects:", draw_obj
                 elif event.key == pygame.K_w:
                     cam_offset_y -= world_map.tileheight
                 elif event.key == pygame.K_s:
@@ -1109,9 +1146,15 @@ def demo_pygame(file_name):
                     cam_offset_x += world_map.tilewidth
                 elif event.key == pygame.K_a:
                     cam_offset_x -= world_map.tilewidth
+                elif event.key in num_keys:
+                    idx = num_keys.index(event.key)
+                    if idx < len(world_map.layers):
+                        world_map.layers[idx].visible = not world_map.layers[idx].visible
+                        print "layer", idx, "visible:", world_map.layers[idx].visible
             elif event.type == pygame.USEREVENT:
-                s = "Frames Per Second: %.2f" % clock.get_fps()
-                message = font.render(s, 0, (255,255,255)).convert()
+                if show_message:
+                    s = "Number of layers: %i (use 0-9 to toggle)   F1-F2 for other functions   Frames Per Second: %.2f" % (len(world_map.layers), clock.get_fps())
+                    message = font.render(s, 0, (255,255,255), (0,0,0)).convert()
 
         pressed = pygame_key_get_pressed()
 
@@ -1121,6 +1164,7 @@ def demo_pygame(file_name):
         # at a reasonable pace even on huge maps.
         speed = (3.0 + pressed[pygame.K_LSHIFT] * 12.0) * (dt / frames_per_sec)
 
+        # cam movement
         if pressed[pygame.K_DOWN]:
             cam_offset_y += speed
         if pressed[pygame.K_UP]:
@@ -1131,8 +1175,8 @@ def demo_pygame(file_name):
             cam_offset_x += speed
 
         # update sprites position
-        for i in range(num_sprites):
-            renderer._layer_sprites[1][i].rect.center = cam_offset_x + 0.5*num_sprites*i/num_sprites + screen_width // 2 , cam_offset_y + i + screen_height // 2
+        for i, spr in enumerate(my_sprites):
+            spr.rect.center = cam_offset_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_offset_y + i * 3 + screen_height // 2
 
         # adjust camera according the keypresses
         renderer_set_camera_position(cam_offset_x, cam_offset_y, screen_width, screen_height, 3)
@@ -1142,7 +1186,7 @@ def demo_pygame(file_name):
 
         # render the map
         for id in layer_range:
-            renderer_render_layer(screen, id)
+            renderer_render_layer(screen, id, screen.blit)
 
         # map objects
         if draw_obj:
@@ -1160,9 +1204,10 @@ def demo_pygame(file_name):
                         pygame.draw.rect(screen, (255, 255, 0), r, 1)
                         text_img = font.render(map_obj.name, 1, (255, 255, 0))
                         screen.blit(text_img, r.move(1, 2))
-        
-        screen.blit(message, (0,0))
-        # simple pygame
+
+        if show_message:
+            screen.blit(message, (0,0))
+
         pygame_display_flip()
 
 #-------------------------------------------------------------------------------
@@ -1171,125 +1216,6 @@ def demo_pygame(file_name):
  # - pygame demo: better rendering
  # - test if object gid is already read in and resolved
 
-def demo_pygame_old(file_name):
-    pygame = __import__('pygame')
-
-    # parser the map
-    world_map = TileMapParser().parse_decode(file_name)
-    # init pygame and set up a screen
-    pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name)
-    screen_width = min(1024, world_map.pixel_width)
-    screen_height = min(768, world_map.pixel_height)
-    screen = pygame.display.set_mode((screen_width, screen_height))
-
-    frames_per_sec = 60.0
-
-
-    # load the images using pygame
-    world_map.load(ImageLoaderPygame())
-    #printer(world_map)
-
-    # an example on how to access the map data and draw an orthoganl map
-    # draw the map
-    assert world_map.orientation == "orthogonal"
-
-    running = True
-    dirty = True
-    # cam_offset is for scrolling
-    cam_offset_x = 0
-    cam_offset_y = 0
-    clock_tick = pygame.time.Clock().tick
-    pygame_event_get = pygame.event.get
-    pygame_key_get_pressed = pygame.key.get_pressed
-    # mainloop
-    while running:
-        dt = clock_tick(60.0)
-        for event in pygame_event_get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-
-        pressed = pygame_key_get_pressed()
-
-        # The speed is 3 by default.
-        # When left Shift is held, the speed increases.
-        # The speed interpolates based on time passed, so the demo navigates
-        # at a reasonable pace even on huge maps.
-        speed = (3.0 + pressed[pygame.K_LSHIFT] * 6.0) * \
-                (dt / frames_per_sec)
-
-        if pressed[pygame.K_DOWN]:
-            cam_offset_y -= speed
-        if pressed[pygame.K_UP]:
-            cam_offset_y += speed
-        if pressed[pygame.K_LEFT]:
-            cam_offset_x += speed
-        if pressed[pygame.K_RIGHT]:
-            cam_offset_x -= speed
-
-        print cam_offset_x, cam_offset_y
-
-        screen.fill((0,0,0))
-
-        # draw the map
-        if dirty or True:
-            dirty = False
-            for layer in world_map.layers[:]:
-                if layer.visible:
-                    idx = 0
-                    # loop over all tiles
-                    # TODO: [21:03]	thorbjorn: DR0ID_: You can generally determine the range of tiles that are visible before your drawing loop, which is much faster than looping over all tiles and checking whether it is visible for each of them.
-
-                    for ypos in xrange(0, layer.height):
-                        for xpos in xrange(0, layer.width):
-                            # add offset in number of tiles
-                            x = (xpos + layer.x) * world_map.tilewidth
-                            y = (ypos + layer.y) * world_map.tileheight
-                            # get the gid at this position
-                            img_idx = layer.content2D[xpos][ypos]
-                            idx += 1
-                            if img_idx:
-                                try:
-                                    # get the actual image and its offset
-                                    offx, offy, screen_img = world_map.indexed_tiles[img_idx]
-                                    # only draw the tiles that are relly visible (speed up)
-                                    # TODO: move this if before the for loops as suggested by thorbjorn
-                                    if x >= cam_offset_x - 3 * world_map.tilewidth and x + cam_offset_x <= screen_width + world_map.tilewidth\
-                                       and y >= cam_offset_y - 3 * world_map.tileheight and y + cam_offset_y <= screen_height + 3 * world_map.tileheight:
-                                        if screen_img.get_alpha():
-                                            screen_img = screen_img.convert_alpha()
-                                        else:
-                                            screen_img = screen_img.convert()
-                                            if layer.opacity > -1:
-                                                #print 'per surf alpha', layer.opacity
-                                                screen_img.set_alpha(None)
-                                                alpha_value = int(255.0 * float(layer.opacity))
-                                                screen_img.set_alpha(alpha_value)
-                                        screen_img = screen_img.convert_alpha()
-                                        # draw image at right position using its offset
-                                        screen.blit(screen_img, (x + cam_offset_x + offx, y + cam_offset_y + offy))
-                                except Exception, e:
-                                    print str(e)
-            # map objects
-            for obj_group in world_map.object_groups:
-                goffx = obj_group.x
-                goffy = obj_group.y
-                if goffx >= cam_offset_x - 3 * world_map.tilewidth and goffx + cam_offset_x <= screen_width + world_map.tilewidth \
-                   and goffy >= cam_offset_y - 3 * world_map.tileheight and goffy + cam_offset_y <= screen_height + 3 * world_map.tileheight:
-                    for map_obj in obj_group.objects:
-                        size = (map_obj.width, map_obj.height)
-                        if map_obj.image_source:
-                            surf = pygame.image.load(map_obj.image_source)
-                            surf = pygame.transform.scale(surf, size)
-                            screen.blit(surf, (goffx + map_obj.x + cam_offset_x, goffy + map_obj.y + cam_offset_y))
-                        else:
-                            r = pygame.Rect((goffx + map_obj.x + cam_offset_x, goffy + map_obj.y + cam_offset_y), size)
-                            pygame.draw.rect(screen, (255, 255, 0), r, 1)
-            # simple pygame
-            pygame.display.flip()
 
 #-------------------------------------------------------------------------------
 
