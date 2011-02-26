@@ -8,12 +8,13 @@ It loads the \*.tmx files produced by Tiled.
 
 
 """
-
-__version__ = "2.3.1.$Rev$"
+__revision__ = "$Rev$"
+__version__ = "2.3.1." + __revision__[6:-2]
 __revision__ = u'$Id: tiledtmxloader.py 13 2011-02-22 19:29:13Z dr0iddr0id@gmail.com $'
 __author__ = u'DR0ID_ @ 2009-2011'
 
 if __debug__:
+    print __version__
     import sys
     sys.stdout.write(u'%s loading ... \n' % (__name__))
     import time
