@@ -20,7 +20,7 @@ It loads the \*.tmx files produced by Tiled.
 #                  |* 1 for beta (status)
 #                  |* 2 for release candidate
 #                  |* 3 for (public) release
-# 
+#
 # For instance:
 #     * 1.2.0.1 instead of 1.2-a
 #     * 1.2.1.2 instead of 1.2-b2 (beta with some bug fixes)
@@ -29,7 +29,7 @@ It loads the \*.tmx files produced by Tiled.
 #     * 1.2.3.5 instead of 1.2-r5 (commercial distribution with many bug fixes)
 
 __revision__ = "$Rev$"
-__version__ = "2.3.1." + __revision__[6:-2]
+__version__ = "3.0.0." + __revision__[6:-2]
 __revision__ = u'$Id: tiledtmxloader.py 13 2011-02-22 19:29:13Z dr0iddr0id@gmail.com $'
 __author__ = u'DR0ID_ @ 2009-2011'
 
@@ -50,6 +50,8 @@ import os.path
 
 
 #-------------------------------------------------------------------------------
+# TODO: separate resource loading and containment into own class for each graphics lib
+#       by doing so, loading the map can be done in the model, loading the graphics resources in the presentation layer
 class IImageLoader(object):
     u"""
     Interface for image loading. Depending on the framework used the
@@ -961,13 +963,16 @@ class TileMapParser(object):
 
 class RendererPygame(object):
 
+# TODO: rename variables
+# TODO: paralax scrolling
+
     class Sprite(object):
         def __init__(self, image, rect, source_rect=None, flags=0):
             self.image = image
             self.rect = rect
             self.source_rect = source_rect
             self.flags = flags
-            
+
     class _Layer(object):
         def __init__(self, layer_id, world_map):
             self._world_map = world_map
@@ -975,33 +980,22 @@ class RendererPygame(object):
             self.content2D = []
             self.level = 1
             self.collapse(1)
-            # if layer_id == 0:
-                # self.collapse(1)
-            # elif layer_id == 1:
-                # self.collapse(10)
-            # elif layer_id == 2:
-                # self.collapse(10)
-            # elif layer_id == 3:
-                # self.collapse(10)
-            # elif layer_id == 4:
-                # self.collapse(10)
-
 
         def collapse(self, level=1):
             self.level = level
             pygame = __import__('pygame')
+
             self.tilewidth = self._world_map.tilewidth * level
             self.tileheight = self._world_map.tileheight * level
             self.width = int(self._world_map.width / float(level) + 0.5)
             self.height = int(self._world_map.height / float(level) + 0.5)
-            
-            
+
             layer = self._world_map.layers[self._layer_id]
-            
+
             # generate the needed lists
             for xpos in xrange(self.width):
                 self.content2D.append([None]*self.height)
-            
+
             # fill them
             for xpos in xrange(self.width):
                 for ypos in xrange(self.height):
@@ -1016,7 +1010,6 @@ class RendererPygame(object):
                         for y in range(level):
                             orig_x = xpos * level + x
                             orig_y = ypos * level + y
-                            # print xpos, ypos, x, y, orig_x, orig_y
                             try:
                                 img_idx = layer.content2D[orig_x][orig_y]
                             except:
@@ -1059,13 +1052,9 @@ class RendererPygame(object):
                         info = None
                         if idx:
                             info = self._world_map.indexed_tiles[img_idx]
-                            
-                    self.content2D[xpos][ypos] = info
-            
-            
 
-    # TODO: collapse/uncollapse
-    # TODO: do calculations of set_camera_position per layer
+                    self.content2D[xpos][ypos] = info
+
     def __init__(self, world_map):
         self._world_map = world_map
         self._cam_offset_x = 0
@@ -1077,11 +1066,6 @@ class RendererPygame(object):
         self._layers = []
         for idx, layer in enumerate(world_map.layers):
             self._layers.append(self._Layer(idx, world_map))
-
-        self._maincache = {}
-        self._backcache = {}
-        self._cachemax = 400
-        self._cachestart = 70
 
         self._layer_sprites = {} # {layer_id:[sprites]}
 
@@ -1100,11 +1084,11 @@ class RendererPygame(object):
             sprites.remove(sprite)
             if len(sprites) == 0:
                 del self._layer_sprites[layer_id]
-                
+
     def remove_sprites(self, layer_id, sprites):
         for sprite in sprites:
             self.remove_sprite(layer_id, sprite)
-            
+
     def contains_sprite(self, layer_id, sprite):
         sprites = self._layer_sprites.get(layer_id)
         if sprites is not None:
@@ -1119,7 +1103,7 @@ class RendererPygame(object):
 
     def get_collapse_level(self, layer_id):
         return self._layers[layer_id].level
-        
+
     def set_collapse_level(self, layer_id, level):
         level = max(1, level)
         self._layers[layer_id].collapse(level)
@@ -1139,7 +1123,7 @@ class RendererPygame(object):
                 len_sprites = len(sprites)
 
             layer = self._layers[layer_id]
-            # this has to be done for each layer for collapsing
+
             tile_w = layer.tilewidth
             tile_h = layer.tileheight
             self._cam_offset_x += world_layer.x
@@ -1154,9 +1138,7 @@ class RendererPygame(object):
             bottom = min(bottom, layer.height)
             self._visible_x_range = range(left, right)
             self._visible_y_range = range(top, bottom)
-            
-            # print layer_id, layer.level, layer.tilewidth, layer.tileheight,  len(layer.content2D) * len(layer.content2D[0]), len(self._visible_x_range)* len(self._visible_y_range)
-                    
+
             # optimizations
             if surf_blit is None:
                 surf_blit = surf.blit
@@ -1287,15 +1269,20 @@ def demo_pygame(file_name):
                 elif event.key == pygame.K_a:
                     cam_offset_x -= world_map.tilewidth
                 elif event.key in num_keys:
+                    # find out which layer to manipulate
                     idx = num_keys.index(event.key)
+                    # make sure this layer exists
                     if idx < len(world_map.layers):
                         if event.mod & pygame.KMOD_CTRL:
+                            # collapse
                             renderer.set_collapse_level(idx, max(renderer.get_collapse_level(idx) - 1, 1))
                             print "layer has collapse level:", renderer.get_collapse_level(idx)
                         elif event.mod & pygame.KMOD_SHIFT:
+                            # uncollapse
                             renderer.set_collapse_level(idx, renderer.get_collapse_level(idx) + 1)
                             print "layer has collapse level:", renderer.get_collapse_level(idx)
                         elif event.mod & pygame.KMOD_ALT:
+                            # hero sprites
                             if renderer.contains_sprite(idx, my_sprites[0]):
                                 renderer.remove_sprites(idx, my_sprites)
                                 print "removed hero sprites from layer", idx
@@ -1303,8 +1290,11 @@ def demo_pygame(file_name):
                                 renderer.add_sprites(idx, my_sprites)
                                 print "added hero sprites to layer", idx
                         else:
+                            # visibility
                             world_map.layers[idx].visible = not world_map.layers[idx].visible
                             print "layer", idx, "visible:", world_map.layers[idx].visible
+                    else:
+                        print "layer", idx, " does not exist on this map!"
             elif event.type == pygame.USEREVENT:
                 if show_message:
                     s = "Number of layers: %i (use 0-9 to toggle)   F1-F2 for other functions   Frames Per Second: %.2f" % (len(world_map.layers), clock.get_fps())
@@ -1366,8 +1356,7 @@ def demo_pygame(file_name):
 
 #-------------------------------------------------------------------------------
 # TODO:
- # - pyglet demo: better rendering
- # - pygame demo: better rendering
+ # - pyglet demo: redo same as for pygame demo, better rendering
  # - test if object gid is already read in and resolved
 
 
@@ -1449,12 +1438,12 @@ def demo_pyglet(file_name):
     for group_num, layer in enumerate(world_map.layers):
         if layer.visible is False:
             continue
-        for ytile in range(layer.height):
-            group = pyglet.graphics.OrderedGroup(group_num)
+        group = pyglet.graphics.OrderedGroup(group_num)
+        for ytile in xrange(layer.height):
             # To compensate for pyglet's upside-down y-axis, the Sprites are
             # placed in rows that are backwards compared to what was loaded
             # into the map. The next operation puts all rows upside-down.
-            for xtile in range(layer.width):
+            for xtile in xrange(layer.width):
                 #layer.content2D[xtile].reverse()
                 image_id = layer.content2D[xtile][ytile]
                 if image_id:
