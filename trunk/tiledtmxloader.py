@@ -140,7 +140,7 @@ class ImageLoaderPygame(IImageLoader):
             img = self.pygame.image.load(filename)
             self._img_cache[filename] = img
         if colorkey:
-            img.set_colorkey(colorkey)
+            img.set_colorkey(colorkey, self.pygame.RLEACCEL)
         return img
 
     def load_image_part(self, filename, x, y, w, h, colorkey=None):
@@ -152,7 +152,7 @@ class ImageLoaderPygame(IImageLoader):
         source_rect = self.pygame.Rect(x, y, w, h)
         img_part.blit(source_img, (0, 0), source_rect)
         if colorkey:
-            img_part.set_colorkey(colorkey)
+            img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
         return img_part
 
     def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
@@ -967,6 +967,102 @@ class RendererPygame(object):
             self.rect = rect
             self.source_rect = source_rect
             self.flags = flags
+            
+    class _Layer(object):
+        def __init__(self, layer_id, world_map):
+            self._world_map = world_map
+            self._layer_id = layer_id
+            self.content2D = []
+            self.level = 1
+            self.collapse(1)
+            # if layer_id == 0:
+                # self.collapse(1)
+            # elif layer_id == 1:
+                # self.collapse(10)
+            # elif layer_id == 2:
+                # self.collapse(10)
+            # elif layer_id == 3:
+                # self.collapse(10)
+            # elif layer_id == 4:
+                # self.collapse(10)
+
+
+        def collapse(self, level=1):
+            self.level = level
+            pygame = __import__('pygame')
+            self.tilewidth = self._world_map.tilewidth * level
+            self.tileheight = self._world_map.tileheight * level
+            self.width = int(self._world_map.width / float(level) + 0.5)
+            self.height = int(self._world_map.height / float(level) + 0.5)
+            
+            
+            layer = self._world_map.layers[self._layer_id]
+            
+            # generate the needed lists
+            for xpos in xrange(self.width):
+                self.content2D.append([None]*self.height)
+            
+            # fill them
+            for xpos in xrange(self.width):
+                for ypos in xrange(self.height):
+                    images = []
+                    minx = xpos
+                    miny = ypos
+                    maxx = xpos + self.tilewidth
+                    maxy = ypos + self.tileheight
+                    flags = 0
+                    depth = 0
+                    for x in range(level):
+                        for y in range(level):
+                            orig_x = xpos * level + x
+                            orig_y = ypos * level + y
+                            # print xpos, ypos, x, y, orig_x, orig_y
+                            try:
+                                img_idx = layer.content2D[orig_x][orig_y]
+                            except:
+                                img_idx = None
+                            if img_idx:
+                                info = self._world_map.indexed_tiles[img_idx]
+                                offx, offy, img = info
+                                flags |= img.get_flags()
+                                if depth < img.get_bitsize():
+                                    depth = img.get_bitsize()
+                                if xpos + x - offx < minx:
+                                    minx = xpos + x - offx
+                                if xpos + x - offx + img.get_width() > maxx:
+                                    maxx = xpos + x - offx + img.get_width()
+                                if ypos + y - offy < miny:
+                                    miny = ypos + y - offy
+                                if ypos + y - offy + img.get_height() > maxy:
+                                    maxy = ypos + y - offy + img.get_height()
+                                images.append(info)
+                            else:
+                                images.append(None)
+                    if level > 1:
+                        idx = 0
+                        size = (maxx - minx, maxy - miny)
+                        if not depth:
+                            depth = 32
+                        surf = pygame.Surface(size, flags, depth)
+                        surf.fill((255, 0, 255))
+                        surf.set_colorkey((255, 0, 255), pygame.RLEACCEL)
+                        surf = surf.convert_alpha()
+                        info = surf.get_width() - self.tilewidth, surf.get_height() - self.tileheight, surf
+                        for x in range(level):
+                            for y in range(level):
+                                orig_info = images[idx]
+                                if orig_info:
+                                    surf.blit(orig_info[2], (x * self._world_map.tilewidth + info[0] - orig_info[0], y * self._world_map.tileheight + info[1] - orig_info[1]))
+                                idx += 1
+                    else:
+                        idx = layer.content2D[xpos][ypos]
+                        info = None
+                        if idx:
+                            info = self._world_map.indexed_tiles[img_idx]
+                            
+                    self.content2D[xpos][ypos] = info
+            
+            
 
     # TODO: collapse/uncollapse
     # TODO: do calculations of set_camera_position per layer
@@ -978,6 +1074,9 @@ class RendererPygame(object):
         self._cam_height = 10
         self._visible_x_range = []
         self._visible_y_range = []
+        self._layers = []
+        for idx, layer in enumerate(world_map.layers):
+            self._layers.append(self._Layer(idx, world_map))
 
         self._maincache = {}
         self._backcache = {}
@@ -1001,30 +1100,33 @@ class RendererPygame(object):
             sprites.remove(sprite)
             if len(sprites) == 0:
                 del self._layer_sprites[layer_id]
+                
+    def remove_sprites(self, layer_id, sprites):
+        for sprite in sprites:
+            self.remove_sprite(layer_id, sprite)
+            
+    def contains_sprite(self, layer_id, sprite):
+        sprites = self._layer_sprites.get(layer_id)
+        if sprites is not None:
+            return (sprite in sprites)
 
     def set_camera_position(self, offset_x, offset_y, width, height, margin=1):
         self._cam_offset_x = int(offset_x)
         self._cam_offset_y = int(offset_y)
         self._cam_width = width
         self._cam_height = height
+        self._margin = margin
 
-        # this has to be done for each layer for collapsing
-        tile_w = self._world_map.tilewidth
-        tile_h = self._world_map.tileheight
-        left = int(round(float(offset_x) / tile_w)) - margin
-        right = int(round(float(offset_x + width) / tile_w)) + margin + 1
-        top = int(round(float(offset_y) / tile_h)) - margin
-        bottom = int(round(float(offset_y + height) / tile_h)) + margin + 1
-        left = max(left, 0)
-        right = min(right, self._world_map.width)
-        top = max(top, 0)
-        bottom = min(bottom, self._world_map.height)
-        self._visible_x_range = range(left, right)
-        self._visible_y_range = range(top, bottom)
+    def get_collapse_level(self, layer_id):
+        return self._layers[layer_id].level
+        
+    def set_collapse_level(self, layer_id, level):
+        level = max(1, level)
+        self._layers[layer_id].collapse(level)
 
     def render_layer(self, surf, layer_id, surf_blit=None, sort_key=lambda spr: spr.rect.y):
-        layer = self._world_map.layers[layer_id]
-        if layer.visible:
+        world_layer = self._world_map.layers[layer_id]
+        if world_layer.visible:
 
             # sprites
             spr_idx = 0
@@ -1036,20 +1138,38 @@ class RendererPygame(object):
                 sprite = sprites[0]
                 len_sprites = len(sprites)
 
+            layer = self._layers[layer_id]
+            # this has to be done for each layer for collapsing
+            tile_w = layer.tilewidth
+            tile_h = layer.tileheight
+            self._cam_offset_x += world_layer.x
+            self._cam_offset_y += world_layer.y
+            left = int(round(float(self._cam_offset_x) / tile_w)) - self._margin
+            right = int(round(float(self._cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
+            top = int(round(float(self._cam_offset_y) / tile_h)) - self._margin
+            bottom = int(round(float(self._cam_offset_y + self._cam_height) / tile_h)) + self._margin + 1
+            left = max(left, 0)
+            right = min(right, layer.width)
+            top = max(top, 0)
+            bottom = min(bottom, layer.height)
+            self._visible_x_range = range(left, right)
+            self._visible_y_range = range(top, bottom)
+            
+            # print layer_id, layer.level, layer.tilewidth, layer.tileheight,  len(layer.content2D) * len(layer.content2D[0]), len(self._visible_x_range)* len(self._visible_y_range)
+                    
             # optimizations
             if surf_blit is None:
                 surf_blit = surf.blit
             layer_content2D = layer.content2D
-            self__world_map_indexed_tiles = self._world_map.indexed_tiles
-            self__world_map_tilewidth = self._world_map.tilewidth
-            self__world_map_tileheight = self._world_map.tileheight
+            # self__world_map_indexed_tiles = self._world_map.indexed_tiles
+            self__world_map_tilewidth = layer.tilewidth
+            self__world_map_tileheight = layer.tileheight
             self__cam_offset_x = self._cam_offset_x
             self__cam_offset_y = self._cam_offset_y
 
             # render
             for ypos in self._visible_y_range:
-                # TODO: layer.y and layer.x are not supported well now
-                screen_tile_y =(ypos + layer.y) * self__world_map_tileheight - self__cam_offset_y
+                screen_tile_y =(ypos + world_layer.y) * self__world_map_tileheight - self__cam_offset_y
                 # draw sprites in this layer
                 while spr_idx < len_sprites and screen_tile_y < sprite.rect.y - self__cam_offset_y <= screen_tile_y + self__world_map_tileheight:
                     surf_blit(sprite.image, sprite.rect.move(-self__cam_offset_x, -self__cam_offset_y - sprite.rect.height), sprite.source_rect, sprite.flags)
@@ -1061,9 +1181,9 @@ class RendererPygame(object):
                     img_idx = layer_content2D[xpos][ypos]
                     if img_idx:
                         # get the actual image and its offset
-                        offx, offy, screen_img = self__world_map_indexed_tiles[img_idx]
+                        offx, offy, screen_img = img_idx #self__world_map_indexed_tiles[img_idx]
                         # add offset in number of tiles
-                        pos = (xpos + layer.x) * self__world_map_tilewidth - self__cam_offset_x + offx, screen_tile_y + offy
+                        pos = (xpos + world_layer.x) * self__world_map_tilewidth - self__cam_offset_x + offx, screen_tile_y + offy
                         # draw image at right position using its offset
                         surf_blit(screen_img, pos)
 
@@ -1126,7 +1246,7 @@ def demo_pygame(file_name):
         image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255))
         sprite = RendererPygame.Sprite(image, image.get_rect())
         my_sprites.append(sprite)
-    renderer.add_sprites(1, my_sprites)
+    # renderer.add_sprites(1, my_sprites)
 
     # optimizations
     layer_range = range(len(world_map.layers))
@@ -1169,8 +1289,22 @@ def demo_pygame(file_name):
                 elif event.key in num_keys:
                     idx = num_keys.index(event.key)
                     if idx < len(world_map.layers):
-                        world_map.layers[idx].visible = not world_map.layers[idx].visible
-                        print "layer", idx, "visible:", world_map.layers[idx].visible
+                        if event.mod & pygame.KMOD_CTRL:
+                            renderer.set_collapse_level(idx, max(renderer.get_collapse_level(idx) - 1, 1))
+                            print "layer has collapse level:", renderer.get_collapse_level(idx)
+                        elif event.mod & pygame.KMOD_SHIFT:
+                            renderer.set_collapse_level(idx, renderer.get_collapse_level(idx) + 1)
+                            print "layer has collapse level:", renderer.get_collapse_level(idx)
+                        elif event.mod & pygame.KMOD_ALT:
+                            if renderer.contains_sprite(idx, my_sprites[0]):
+                                renderer.remove_sprites(idx, my_sprites)
+                                print "removed hero sprites from layer", idx
+                            else:
+                                renderer.add_sprites(idx, my_sprites)
+                                print "added hero sprites to layer", idx
+                        else:
+                            world_map.layers[idx].visible = not world_map.layers[idx].visible
+                            print "layer", idx, "visible:", world_map.layers[idx].visible
             elif event.type == pygame.USEREVENT:
                 if show_message:
                     s = "Number of layers: %i (use 0-9 to toggle)   F1-F2 for other functions   Frames Per Second: %.2f" % (len(world_map.layers), clock.get_fps())
