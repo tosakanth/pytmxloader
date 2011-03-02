@@ -1094,12 +1094,12 @@ class RendererPygame(object):
         if sprites is not None:
             return (sprite in sprites)
 
-    def set_camera_position(self, offset_x, offset_y, width, height, margin=1):
+    def set_camera_position(self, offset_x, offset_y, width, height, margin=0):
         self._cam_offset_x = int(offset_x)
         self._cam_offset_y = int(offset_y)
         self._cam_width = width
         self._cam_height = height
-        self._margin = margin
+        self._margin = margin + 1
 
     def get_collapse_level(self, layer_id):
         return self._layers[layer_id].level
