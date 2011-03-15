@@ -152,9 +152,15 @@ class ImageLoaderPygame(IImageLoader):
         ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
         img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
         source_rect = self.pygame.Rect(x, y, w, h)
-        img_part.blit(source_img, (0, 0), source_rect)
+        
+        ## ISSUE 8:
+        ## Set the colorkey BEFORE we blit the source_img
         if colorkey:
             img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
+            img_part.fill(colorkey)
+            
+        img_part.blit(source_img, (0, 0), source_rect)
+        
         return img_part
 
     def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
