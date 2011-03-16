@@ -1127,7 +1127,6 @@ class RendererPygame(object):
                     sprites.sort(key=sort_key)
                 sprite = sprites[0]
                 len_sprites = len(sprites)
-
             layer = self._layers[layer_id]
 
             tile_w = layer.tilewidth
@@ -1158,9 +1157,10 @@ class RendererPygame(object):
             # render
             for ypos in self._visible_y_range:
                 screen_tile_y =(ypos + world_layer.y) * self__world_map_tileheight - self__cam_offset_y
-                # draw sprites in this layer
-                while spr_idx < len_sprites and screen_tile_y < sprite.rect.y - self__cam_offset_y <= screen_tile_y + self__world_map_tileheight:
-                    surf_blit(sprite.image, sprite.rect.move(-self__cam_offset_x, -self__cam_offset_y - sprite.rect.height), sprite.source_rect, sprite.flags)
+                # draw sprites in this layer (skip the ones outside visible area/map)
+                while spr_idx < len_sprites and sprite.rect.y - self__cam_offset_y <= screen_tile_y + self__world_map_tileheight:
+                    if screen_tile_y < sprite.rect.y - self__cam_offset_y:
+                        surf_blit(sprite.image, sprite.rect.move(-self__cam_offset_x, -self__cam_offset_y - sprite.rect.height), sprite.source_rect, sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
                         sprite = sprites[spr_idx]
