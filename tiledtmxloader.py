@@ -1132,37 +1132,36 @@ class RendererPygame(object):
 
             tile_w = layer.tilewidth
             tile_h = layer.tileheight
-            # self._cam_offset_x += world_layer.x
-            # self._cam_offset_y += world_layer.y
-            left = int(round(float(self._cam_offset_x) / tile_w)) - self._margin
-            right = int(round(float(self._cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
-            top = int(round(float(self._cam_offset_y) / tile_h)) - self._margin
-            bottom = int(round(float(self._cam_offset_y + self._cam_height) / tile_h)) + self._margin + 1
+            world_layer_x = world_layer.x
+            world_layer_y = world_layer.y
+            self__cam_offset_x = self._cam_offset_x + world_layer_x
+            self__cam_offset_y = self._cam_offset_y + world_layer_y
+            
+            left = int(round(float(self__cam_offset_x) / tile_w)) - self._margin
+            right = int(round(float(self__cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
+            top = int(round(float(self__cam_offset_y) / tile_h)) - self._margin
+            bottom = int(round(float(self__cam_offset_y + self._cam_height) / tile_h)) + self._margin + 1
+            
             left = left if left > 0 else 0
             right = right if right < layer.width else layer.width
             top = top if top > 0 else 0
             bottom = bottom if bottom < layer.height else layer.height
+            
             # optimizations
             if surf_blit is None:
                 surf_blit = surf.blit
             layer_content2D = layer.content2D
             # self__world_map_indexed_tiles = self._world_map.indexed_tiles
-            self__world_map_tilewidth = layer.tilewidth
-            self__world_map_tileheight = layer.tileheight
-            self__cam_offset_x = self._cam_offset_x
-            self__cam_offset_y = self._cam_offset_y
-            world_layer_x = world_layer.x
-            world_layer_y = world_layer.y
-            world_top = top * self__world_map_tileheight
-            world_bottom = bottom * self__world_map_tileheight
-            world_left = left * self__world_map_tilewidth
-            world_right = right * self__world_map_tilewidth
+            world_top = top * tile_h
+            world_bottom = bottom * tile_h
+            world_left = left * tile_w
+            world_right = right * tile_w
 
             # render
             for ypos in range(top, bottom):
                 # draw sprites in this layer (skip the ones outside visible area/map)
-                tile_y = (ypos + world_layer_y) * self__world_map_tileheight
-                while spr_idx < len_sprites and sprite_rect.y + sprite_rect.height <= tile_y + self__world_map_tileheight:
+                tile_y = ypos * tile_h
+                while spr_idx < len_sprites and sprite_rect.y + sprite_rect.height <= tile_y + tile_h:
                     # this is the fastest check since it stops at first expression failing
                     if not (world_top > sprite_rect.y + sprite_rect.height or \
                        world_bottom < sprite_rect.y or \
@@ -1180,7 +1179,7 @@ class RendererPygame(object):
                         # get the actual image and its offset
                         offx, offy, screen_img = img_idx #self__world_map_indexed_tiles[img_idx]
                         # add offset in number of tiles
-                        pos = (xpos + world_layer_x) * self__world_map_tilewidth - self__cam_offset_x + offx, tile_y - self__cam_offset_y + offy
+                        pos = xpos * tile_w - self__cam_offset_x + offx, tile_y - self__cam_offset_y + offy
                         # draw image at right position using its offset
                         surf_blit(screen_img, pos)
 
@@ -1496,7 +1495,13 @@ def main():
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    main()
+    import cProfile
+    cProfile.run('main()', "stat")
+    import pstats
+    p = pstats.Stats("stat")
+    p.sort_stats('cumulative')
+    p.print_stats()
+    # main()
 
 
 if __debug__:
