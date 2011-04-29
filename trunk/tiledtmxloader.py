@@ -1132,10 +1132,8 @@ class RendererPygame(object):
 
             tile_w = layer.tilewidth
             tile_h = layer.tileheight
-            world_layer_x = world_layer.x
-            world_layer_y = world_layer.y
-            self__cam_offset_x = self._cam_offset_x + world_layer_x
-            self__cam_offset_y = self._cam_offset_y + world_layer_y
+            self__cam_offset_x = self._cam_offset_x + world_layer.x
+            self__cam_offset_y = self._cam_offset_y + world_layer.y
             
             left = int(round(float(self__cam_offset_x) / tile_w)) - self._margin
             right = int(round(float(self__cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
@@ -1151,11 +1149,10 @@ class RendererPygame(object):
             if surf_blit is None:
                 surf_blit = surf.blit
             layer_content2D = layer.content2D
-            # self__world_map_indexed_tiles = self._world_map.indexed_tiles
-            world_top = top * tile_h
-            world_bottom = bottom * tile_h
-            world_left = left * tile_w
-            world_right = right * tile_w
+            # world_top = top * tile_h
+            # world_bottom = bottom * tile_h
+            # world_left = left * tile_w
+            # world_right = right * tile_w
 
             # render
             for ypos in range(top, bottom):
@@ -1163,10 +1160,10 @@ class RendererPygame(object):
                 tile_y = ypos * tile_h
                 while spr_idx < len_sprites and sprite_rect.y + sprite_rect.height <= tile_y + tile_h:
                     # this is the fastest check since it stops at first expression failing
-                    if not (world_top > sprite_rect.y + sprite_rect.height or \
-                       world_bottom < sprite_rect.y or \
-                       world_left > sprite_rect.x + sprite_rect.width or \
-                       world_right < sprite_rect.x):
+                    if not (top * tile_h > sprite_rect.y + sprite_rect.height or \
+                       bottom * tile_h < sprite_rect.y or \
+                       left * tile_w > sprite_rect.x + sprite_rect.width or \
+                       right * tile_w < sprite_rect.x):
                         surf_blit(sprite.image, sprite_rect.move(-self__cam_offset_x, -self__cam_offset_y), sprite.source_rect, sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
@@ -1177,7 +1174,7 @@ class RendererPygame(object):
                     img_idx = layer_content2D[xpos][ypos]
                     if img_idx:
                         # get the actual image and its offset
-                        offx, offy, screen_img = img_idx #self__world_map_indexed_tiles[img_idx]
+                        offx, offy, screen_img = img_idx
                         # add offset in number of tiles
                         pos = xpos * tile_w - self__cam_offset_x + offx, tile_y - self__cam_offset_y + offy
                         # draw image at right position using its offset
