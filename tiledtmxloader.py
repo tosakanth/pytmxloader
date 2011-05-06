@@ -290,7 +290,7 @@ class TileMap(object):
         self.version = 0
         self.tile_sets = [] # TileSet
         self.layers = [] # WorldTileLayer <- what order? back to front (guessed)
-        self.indexed_tiles = {} # {gid: (offsetx, offsety, image}
+        # self.indexed_tiles = {} # {gid: (offsetx, offsety, image}
         self.object_groups = []
         self.properties = {} # {name: value}
         # additional info
@@ -344,66 +344,6 @@ class TileMap(object):
                 map_obj.width = int(map_obj.width)
                 map_obj.height = int(map_obj.height)
 
-    def load(self, image_loader):
-        u"""
-        loads all images using a IImageLoadermage implementation and fills up
-        the indexed_tiles dictionary.
-        The image may have per pixel alpha or a colorkey set.
-        """
-        self._image_loader = image_loader
-        for tile_set in self.tile_sets:
-            # do images first, because tiles could reference it
-            for img in tile_set.images:
-                if img.source:
-                    self._load_image_from_source(tile_set, img)
-                else:
-                    tile_set.indexed_images[img.id] = self._load_image(img)
-            # tiles
-            for tile in tile_set.tiles:
-                for img in tile.images:
-                    if not img.content and not img.source:
-                        # only image id set
-                        indexed_img = tile_set.indexed_images[img.id]
-                        self.indexed_tiles[int(tile_set.firstgid) + int(tile.id)] = (0, 0, indexed_img)
-                    else:
-                        if img.source:
-                            self._load_image_from_source(tile_set, img)
-                        else:
-                            indexed_img = self._load_image(img)
-                            self.indexed_tiles[int(tile_set.firstgid) + int(tile.id)] = (0, 0, indexed_img)
-
-    def _load_image_from_source(self, tile_set, a_tile_image):
-        # relative path to file
-        img_path = os.path.join(os.path.dirname(self.map_file_name), a_tile_image.source)
-        tile_width = int(self.tilewidth)
-        tile_height = int(self.tileheight)
-        if tile_set.tileheight:
-            tile_width = int(tile_set.tilewidth)
-        if tile_set.tilewidth:
-            tile_height = int(tile_set.tileheight)
-        offsetx = 0
-        offsety = 0
-#        if tile_width > self.tilewidth:
-#            offsetx = tile_width
-        if tile_height > self.tileheight:
-            offsety = tile_height - self.tileheight
-        idx = 0
-        for image in self._image_loader.load_image_parts(img_path, \
-                    tile_set.margin, tile_set.spacing, tile_width, tile_height, a_tile_image.trans):
-            self.indexed_tiles[int(tile_set.firstgid) + idx] = (offsetx, -offsety, image)
-            idx += 1
-
-    def _load_image(self, a_tile_image):
-        img_str = a_tile_image.content
-        if a_tile_image.encoding:
-            if a_tile_image.encoding == u'base64':
-                img_str = decode_base64(a_tile_image.content)
-            else:
-                raise Exception(u'unknown image encoding %s' % a_tile_image.encoding)
-        sio = StringIO.StringIO(img_str)
-        new_image = self._image_loader.load_image_file_like(sio, a_tile_image.trans)
-        return new_image
-
     def decode(self):
         u"""
         Decodes the TileLayer encoded_content and saves it in decoded_content.
@@ -428,9 +368,6 @@ class TileSet(object):
             list of Tiles
         indexed_images : dict
             after calling load() it is dict containing id: image
-        indexed_tiles : dict
-            after calling load() it is a dict containing
-            gid: (offsetx, offsety, image) , the image corresponding to the gid
         spacing : int
             the spacing between tiles
         marging : int
@@ -450,7 +387,7 @@ class TileSet(object):
         self.images = [] # TileImage
         self.tiles = [] # Tile
         self.indexed_images = {} # {id:image}
-        self.indexed_tiles = {} # {gid: (offsetx, offsety, image} <- actually in map data
+        # self.indexed_tiles = {} # {gid: (offsetx, offsety, image} <- actually in map data
         self.spacing = 0
         self.margin = 0
         self.properties = {}
@@ -967,6 +904,189 @@ class TileMapParser(object):
 
 #-------------------------------------------------------------------------------
 
+class AbstractResourceLoader(object):
+
+    def __init__(self):
+        self.indexed_tiles = {} # {gid: (offsetx, offsety, image}
+        self.world_map = None
+        self._img_cache = {}
+
+    def _load_image(self, filename, colorkey=None): # -> image
+        u"""
+        Load a single image.
+
+        :Parameters:
+            filename : string
+                Path to the file to be loaded.
+            colorkey : tuple
+                The (r, g, b) color that should be used as colorkey (or magic color).
+                Default: None
+
+        :rtype: image
+
+        """
+        raise NotImplementedError(u'This should be implemented in a inherited class')
+
+    def _load_image_file_like(self, file_like_obj, colorkey=None): # -> image
+        u"""
+        Load a image from a file like object.
+
+        :Parameters:
+            file_like_obj : file
+                This is the file like object to load the image from.
+            colorkey : tuple
+                The (r, g, b) color that should be used as colorkey (or magic color).
+                Default: None
+
+        :rtype: image
+        """
+        raise NotImplementedError(u'This should be implemented in a inherited class')
+
+    def _load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+        u"""
+        Load different tile images from one source image.
+
+        :Parameters:
+            filename : string
+                Path to image to be loaded.
+            margin : int
+                The margin around the image.
+            spacing : int
+                The space between the tile images.
+            tile_width : int
+                The width of a single tile.
+            tile_height : int
+                The height of a single tile.
+            colorkey : tuple
+                The (r, g, b) color that should be used as colorkey (or magic color).
+                Default: None
+
+        Luckily that iteration is so easy in python::
+
+            ...
+            w, h = image_size
+            for y in xrange(margin, h, tile_height + spacing):
+                for x in xrange(margin, w, tile_width + spacing):
+                    ...
+
+        :rtype: a list of images
+        """
+        raise NotImplementedError(u'This should be implemented in a inherited class')
+
+    def load(self, tile_map):
+        u"""
+        """
+        self.world_map = tile_map
+        for tile_set in tile_map.tile_sets:
+            # do images first, because tiles could reference it
+            for img in tile_set.images:
+                if img.source:
+                    self._load_image_from_source(tile_map, tile_set, img)
+                else:
+                    tile_set.indexed_images[img.id] = self._load_tile_image(img)
+            # tiles
+            for tile in tile_set.tiles:
+                for img in tile.images:
+                    if not img.content and not img.source:
+                        # only image id set
+                        indexed_img = tile_set.indexed_images[img.id]
+                        self.indexed_tiles[int(tile_set.firstgid) + int(tile.id)] = (0, 0, indexed_img)
+                    else:
+                        if img.source:
+                            self._load_image_from_source(tile_map, tile_set, img)
+                        else:
+                            indexed_img = self._load_tile_image(img)
+                            self.indexed_tiles[int(tile_set.firstgid) + int(tile.id)] = (0, 0, indexed_img)
+
+    def _load_image_from_source(self, tile_map, tile_set, a_tile_image):
+        # relative path to file
+        img_path = os.path.join(os.path.dirname(tile_map.map_file_name), a_tile_image.source)
+        tile_width = int(tile_map.tilewidth)
+        tile_height = int(tile_map.tileheight)
+        if tile_set.tileheight:
+            tile_width = int(tile_set.tilewidth)
+        if tile_set.tilewidth:
+            tile_height = int(tile_set.tileheight)
+        offsetx = 0
+        offsety = 0
+#        if tile_width > self.tilewidth:
+#            offsetx = tile_width
+        if tile_height > tile_map.tileheight:
+            offsety = tile_height - tile_map.tileheight
+        idx = 0
+        for image in self._load_image_parts(img_path, \
+                    tile_set.margin, tile_set.spacing, tile_width, tile_height, a_tile_image.trans):
+            self.indexed_tiles[int(tile_set.firstgid) + idx] = (offsetx, -offsety, image)
+            idx += 1
+
+    def _load_tile_image(self, a_tile_image):
+        img_str = a_tile_image.content
+        if a_tile_image.encoding:
+            if a_tile_image.encoding == u'base64':
+                img_str = decode_base64(a_tile_image.content)
+            else:
+                raise Exception(u'unknown image encoding %s' % a_tile_image.encoding)
+        sio = StringIO.StringIO(img_str)
+        new_image = self._load_image_file_like(sio, a_tile_image.trans)
+        return new_image
+
+#-------------------------------------------------------------------------------
+
+class ResourceLoaderPygame(AbstractResourceLoader):
+
+    def __init__(self):
+        AbstractResourceLoader.__init__(self)
+        self.pygame = __import__('pygame')
+
+    def _load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+        source_img = self._load_image(filename, colorkey)
+        w, h = source_img.get_size()
+        images = []
+        for y in xrange(margin, h, tile_height + spacing):
+            for x in xrange(margin, w, tile_width + spacing):
+                img_part = self._load_image_part(filename, x, y, tile_width, tile_height, colorkey)
+                images.append(img_part)
+        return images
+
+    def _load_image_part(self, filename, x, y, w, h, colorkey=None):
+        source_img = self._load_image(filename, colorkey)
+        ## ISSUE 4:
+        ##      The following usage seems to be broken in pygame (1.9.1.):
+        ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
+        img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
+        source_rect = self.pygame.Rect(x, y, w, h)
+        
+        ## ISSUE 8:
+        ## Set the colorkey BEFORE we blit the source_img
+        if colorkey:
+            img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
+            img_part.fill(colorkey)
+            
+        img_part.blit(source_img, (0, 0), source_rect)
+        
+        return img_part
+
+    def _load_image_file_like(self, file_like_obj, colorkey=None): # -> image
+        # pygame.image.load can load from a path and from a file-like object
+        # that is why here it is redirected to the other method
+        return self._load_image(file_like_obj, colorkey)
+
+    def _load_image(self, filename, colorkey=None):
+        img = self._img_cache.get(filename, None)
+        if img is None:
+            img = self.pygame.image.load(filename)
+            self._img_cache[filename] = img
+        if colorkey:
+            img.set_colorkey(colorkey, self.pygame.RLEACCEL)
+        return img
+
+    def get_sprites(self):
+        pass
+
+    
+
+#-------------------------------------------------------------------------------
+
 class RendererPygame(object):
 
 # TODO: rename variables
@@ -975,13 +1095,14 @@ class RendererPygame(object):
     class Sprite(object):
         def __init__(self, image, rect, source_rect=None, flags=0):
             self.image = image
-            self.rect = rect
+            self.rect = rect # blit rect
             self.source_rect = source_rect
             self.flags = flags
 
     class _Layer(object):
-        def __init__(self, layer_id, world_map):
-            self._world_map = world_map
+        def __init__(self, layer_id, resource_loader):
+            self._world_map = resource_loader.world_map
+            self._resource_loader = resource_loader
             self._layer_id = layer_id
             self.content2D = []
             self.level = 1
@@ -1021,7 +1142,7 @@ class RendererPygame(object):
                             except:
                                 img_idx = None
                             if img_idx:
-                                info = self._world_map.indexed_tiles[img_idx]
+                                info = self._resource_loader.indexed_tiles[img_idx]
                                 offx, offy, img = info
                                 flags |= img.get_flags()
                                 if depth < img.get_bitsize():
@@ -1043,9 +1164,22 @@ class RendererPygame(object):
                         if not depth:
                             depth = 32
                         surf = pygame.Surface(size, flags, depth)
-                        surf.fill((255, 0, 255))
+                        surf.fill((255, 0, 255, 0))
                         surf.set_colorkey((255, 0, 255), pygame.RLEACCEL)
                         surf = surf.convert_alpha()
+                        surf = pygame.Surface(size, flags, depth)
+                        
+                        
+                        # colorkey = img.get_colorkey()
+                        # if colorkey:
+                            # surf.fill(colorkey)
+                            # surf.set_colorkey(colorkey, pygame.RLEACCEL)
+                            # surf = surf.convert()
+                        # else:
+                            # surf.fill((255, 0, 255, 0))
+                            # surf = surf.convert_alpha()
+                            
+                        # surf = surf.convert()
                         info = surf.get_width() - self.tilewidth, surf.get_height() - self.tileheight, surf
                         for x in range(level):
                             for y in range(level):
@@ -1057,12 +1191,12 @@ class RendererPygame(object):
                         idx = layer.content2D[xpos][ypos]
                         info = None
                         if idx:
-                            info = self._world_map.indexed_tiles[img_idx]
+                            info = self._resource_loader.indexed_tiles[img_idx]
 
                     self.content2D[xpos][ypos] = info
 
-    def __init__(self, world_map):
-        self._world_map = world_map
+    def __init__(self, resource_loader):
+        self._world_map = resource_loader.world_map
         self._cam_offset_x = 0
         self._cam_offset_y = 0
         self._cam_width = 10
@@ -1070,8 +1204,8 @@ class RendererPygame(object):
         self._visible_x_range = []
         self._visible_y_range = []
         self._layers = []
-        for idx, layer in enumerate(world_map.layers):
-            self._layers.append(self._Layer(idx, world_map))
+        for idx, layer in enumerate(self._world_map.layers):
+            self._layers.append(self._Layer(idx, resource_loader))
 
         self._layer_sprites = {} # {layer_id:[sprites]}
 
@@ -1095,10 +1229,19 @@ class RendererPygame(object):
         for sprite in sprites:
             self.remove_sprite(layer_id, sprite)
 
-    def contains_sprite(self, layer_id, sprite):
-        sprites = self._layer_sprites.get(layer_id)
+    def contains_sprite(self, idx, sprite):
+        sprites = self._layer_sprites.get(idx)
         if sprites is not None:
-            return (sprite in sprites)
+            if sprite in sprites:
+                return True
+        return False
+    # def contains_sprite(self, sprite):
+        # for layer_id in range(len(self._layer_sprites)):
+            # sprites = self._layer_sprites.get(layer_id)
+            # if sprites is not None:
+                # if sprite in sprites:
+                    # return True
+        # return False
 
     def set_camera_position(self, offset_x, offset_y, width, height, margin=0):
         self._cam_offset_x = int(offset_x)
@@ -1205,13 +1348,14 @@ def demo_pygame(file_name):
     screen = pygame.display.set_mode((screen_width, screen_height), pygame.DOUBLEBUF)
 
     # load the images using pygame
-    image_loader = ImageLoaderPygame()
-    world_map.load(image_loader)
+    # image_loader = ImageLoaderPygame()
+    resources = ResourceLoaderPygame()
+    resources.load(world_map)
     #printer(world_map)
 
     # prepare map rendering
     assert world_map.orientation == "orthogonal"
-    renderer = RendererPygame(world_map)
+    renderer = RendererPygame(resources)
 
     # cam_offset is for scrolling
     cam_offset_x = 0
@@ -1231,13 +1375,13 @@ def demo_pygame(file_name):
     pygame.time.set_timer(pygame.USEREVENT, 1000)
 
     # add additional sprites
-    num_sprites = 1
+    num_sprites = 100
     my_sprites = []
     for i in range(num_sprites):
         # j = num_sprites - i
         # image = pygame.Surface((20, j*40.0/num_sprites+10))
         # image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255))
-        image = pygame.Surface((10, 10))
+        image = pygame.Surface((60, 100))
         image.fill((255, 255, 255))
         sprite = RendererPygame.Sprite(image, image.get_rect())
         my_sprites.append(sprite)
@@ -1252,10 +1396,16 @@ def demo_pygame(file_name):
     renderer_render_layer = renderer.render_layer
     renderer_set_camera_position = renderer.set_camera_position
     pygame_display_flip = pygame.display.flip
+    
+    t = 0
 
     # mainloop
     while running:
         dt = clock_tick()#60.0)
+        t += dt
+        if t > 1000:
+            t = 0
+            print clock.get_fps()
 
         # event handling
         for event in pygame_event_get():
@@ -1492,13 +1642,15 @@ def main():
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    import cProfile
-    cProfile.run('main()', "stat")
-    import pstats
-    p = pstats.Stats("stat")
-    p.sort_stats('cumulative')
-    p.print_stats()
-    # main()
+    # import cProfile
+    # cProfile.run('main()', "stats.profile")
+    # import pstats
+    # p = pstats.Stats("stats.profile")
+    # p.strip_dirs()
+    # p.sort_stats('time')
+    # p.print_stats()
+    
+    main()
 
 
 if __debug__:
