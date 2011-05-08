@@ -49,185 +49,185 @@ import StringIO
 import os.path
 
 
-#-------------------------------------------------------------------------------
-# TODO: separate resource loading and containment into own class for each graphics lib
-#       by doing so, loading the map can be done in the model, loading the graphics resources in the presentation layer
-class IImageLoader(object):
-    u"""
-    Interface for image loading. Depending on the framework used the
-    images have to be loaded differently.
-    """
+# #-------------------------------------------------------------------------------
+# # TODO: separate resource loading and containment into own class for each graphics lib
+# #       by doing so, loading the map can be done in the model, loading the graphics resources in the presentation layer
+# class IImageLoader(object):
+    # u"""
+    # Interface for image loading. Depending on the framework used the
+    # images have to be loaded differently.
+    # """
 
-    def load_image(self, filename, colorkey=None): # -> image
-        u"""
-        Load a single image.
+    # def load_image(self, filename, colorkey=None): # -> image
+        # u"""
+        # Load a single image.
 
-        :Parameters:
-            filename : string
-                Path to the file to be loaded.
-            colorkey : tuple
-                The (r, g, b) color that should be used as colorkey (or magic color).
-                Default: None
+        # :Parameters:
+            # filename : string
+                # Path to the file to be loaded.
+            # colorkey : tuple
+                # The (r, g, b) color that should be used as colorkey (or magic color).
+                # Default: None
 
-        :rtype: image
+        # :rtype: image
 
-        """
-        raise NotImplementedError(u'This should be implemented in a inherited class')
+        # """
+        # raise NotImplementedError(u'This should be implemented in a inherited class')
 
-    def load_image_file_like(self, file_like_obj, colorkey=None): # -> image
-        u"""
-        Load a image from a file like object.
+    # def load_image_file_like(self, file_like_obj, colorkey=None): # -> image
+        # u"""
+        # Load a image from a file like object.
 
-        :Parameters:
-            file_like_obj : file
-                This is the file like object to load the image from.
-            colorkey : tuple
-                The (r, g, b) color that should be used as colorkey (or magic color).
-                Default: None
+        # :Parameters:
+            # file_like_obj : file
+                # This is the file like object to load the image from.
+            # colorkey : tuple
+                # The (r, g, b) color that should be used as colorkey (or magic color).
+                # Default: None
 
-        :rtype: image
-        """
-        raise NotImplementedError(u'This should be implemented in a inherited class')
+        # :rtype: image
+        # """
+        # raise NotImplementedError(u'This should be implemented in a inherited class')
 
-    def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
-        u"""
-        Load different tile images from one source image.
+    # def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+        # u"""
+        # Load different tile images from one source image.
 
-        :Parameters:
-            filename : string
-                Path to image to be loaded.
-            margin : int
-                The margin around the image.
-            spacing : int
-                The space between the tile images.
-            tile_width : int
-                The width of a single tile.
-            tile_height : int
-                The height of a single tile.
-            colorkey : tuple
-                The (r, g, b) color that should be used as colorkey (or magic color).
-                Default: None
+        # :Parameters:
+            # filename : string
+                # Path to image to be loaded.
+            # margin : int
+                # The margin around the image.
+            # spacing : int
+                # The space between the tile images.
+            # tile_width : int
+                # The width of a single tile.
+            # tile_height : int
+                # The height of a single tile.
+            # colorkey : tuple
+                # The (r, g, b) color that should be used as colorkey (or magic color).
+                # Default: None
 
-        Luckily that iteration is so easy in python::
+        # Luckily that iteration is so easy in python::
 
-            ...
-            w, h = image_size
-            for y in xrange(margin, h, tile_height + spacing):
-                for x in xrange(margin, w, tile_width + spacing):
-                    ...
+            # ...
+            # w, h = image_size
+            # for y in xrange(margin, h, tile_height + spacing):
+                # for x in xrange(margin, w, tile_width + spacing):
+                    # ...
 
-        :rtype: a list of images
-        """
-        raise NotImplementedError(u'This should be implemented in a inherited class')
+        # :rtype: a list of images
+        # """
+        # raise NotImplementedError(u'This should be implemented in a inherited class')
 
-#-------------------------------------------------------------------------------
-class ImageLoaderPygame(IImageLoader):
-    u"""
-    Pygame image loader.
+# #-------------------------------------------------------------------------------
+# class ImageLoaderPygame(IImageLoader):
+    # u"""
+    # Pygame image loader.
 
-    It uses an internal image cache. The methods return Surface.
+    # It uses an internal image cache. The methods return Surface.
 
-    :Undocumented:
-        pygame
-    """
+    # :Undocumented:
+        # pygame
+    # """
 
 
-    def __init__(self):
-        self.pygame = __import__('pygame')
-        self._img_cache = {} # {name: surf}
+    # def __init__(self):
+        # self.pygame = __import__('pygame')
+        # self._img_cache = {} # {name: surf}
 
-    def load_image(self, filename, colorkey=None):
-        img = self._img_cache.get(filename, None)
-        if img is None:
-            img = self.pygame.image.load(filename)
-            self._img_cache[filename] = img
-        if colorkey:
-            img.set_colorkey(colorkey, self.pygame.RLEACCEL)
-        return img
+    # def load_image(self, filename, colorkey=None):
+        # img = self._img_cache.get(filename, None)
+        # if img is None:
+            # img = self.pygame.image.load(filename)
+            # self._img_cache[filename] = img
+        # if colorkey:
+            # img.set_colorkey(colorkey, self.pygame.RLEACCEL)
+        # return img
 
-    def load_image_part(self, filename, x, y, w, h, colorkey=None):
-        source_img = self.load_image(filename, colorkey)
-        ## ISSUE 4:
-        ##      The following usage seems to be broken in pygame (1.9.1.):
-        ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
-        img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
-        source_rect = self.pygame.Rect(x, y, w, h)
+    # def load_image_part(self, filename, x, y, w, h, colorkey=None):
+        # source_img = self.load_image(filename, colorkey)
+        # ## ISSUE 4:
+        # ##      The following usage seems to be broken in pygame (1.9.1.):
+        # ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
+        # img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
+        # source_rect = self.pygame.Rect(x, y, w, h)
         
-        ## ISSUE 8:
-        ## Set the colorkey BEFORE we blit the source_img
-        if colorkey:
-            img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
-            img_part.fill(colorkey)
+        # ## ISSUE 8:
+        # ## Set the colorkey BEFORE we blit the source_img
+        # if colorkey:
+            # img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
+            # img_part.fill(colorkey)
             
-        img_part.blit(source_img, (0, 0), source_rect)
+        # img_part.blit(source_img, (0, 0), source_rect)
         
-        return img_part
+        # return img_part
 
-    def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
-        source_img = self.load_image(filename, colorkey)
-        w, h = source_img.get_size()
-        images = []
-        for y in xrange(margin, h, tile_height + spacing):
-            for x in xrange(margin, w, tile_width + spacing):
-                img_part = self.load_image_part(filename, x, y, tile_width, tile_height, colorkey)
-                images.append(img_part)
-        return images
+    # def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+        # source_img = self.load_image(filename, colorkey)
+        # w, h = source_img.get_size()
+        # images = []
+        # for y in xrange(margin, h, tile_height + spacing):
+            # for x in xrange(margin, w, tile_width + spacing):
+                # img_part = self.load_image_part(filename, x, y, tile_width, tile_height, colorkey)
+                # images.append(img_part)
+        # return images
 
-    def load_image_file_like(self, file_like_obj, colorkey=None): # -> image
-        # pygame.image.load can load from a path and from a file-like object
-        # that is why here it is redirected to the other method
-        return self.load_image(file_like_obj, colorkey)
+    # def load_image_file_like(self, file_like_obj, colorkey=None): # -> image
+        # # pygame.image.load can load from a path and from a file-like object
+        # # that is why here it is redirected to the other method
+        # return self.load_image(file_like_obj, colorkey)
 
-#-------------------------------------------------------------------------------
-class ImageLoaderPyglet(IImageLoader):
-    u"""
-    Pyglet image loader.
+# #-------------------------------------------------------------------------------
+# class ImageLoaderPyglet(IImageLoader):
+    # u"""
+    # Pyglet image loader.
 
-    It uses an internal image cache. The methods return some form of
-    AbstractImage. The resource module is not used for loading the images.
+    # It uses an internal image cache. The methods return some form of
+    # AbstractImage. The resource module is not used for loading the images.
 
-    Thanks to HydroKirby from #pyglet to contribute the ImageLoaderPyglet and the pyglet demo!
+    # Thanks to HydroKirby from #pyglet to contribute the ImageLoaderPyglet and the pyglet demo!
 
-    :Undocumented:
-        pyglet
-    """
-
-
-    def __init__(self):
-        self.pyglet = __import__('pyglet')
-        self._img_cache = {} # {name: image}
-
-    def load_image(self, filename, colorkey=None, fileobj=None):
-        img = self._img_cache.get(filename, None)
-        if img is None:
-            if fileobj:
-                img = self.pyglet.image.load(filename, fileobj, self.pyglet.image.codecs.get_decoders("*.png")[0])
-            else:
-                img = self.pyglet.image.load(filename)
-            self._img_cache[filename] = img
-        return img
-
-    def load_image_part(self, filename, x, y, w, h, colorkey=None):
-        image = self.load_image(filename, colorkey)
-        img_part = image.get_region(x, y, w, h)
-        return img_part
+    # :Undocumented:
+        # pyglet
+    # """
 
 
-    def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
-        source_img = self.load_image(filename, colorkey)
-        images = []
-        # Reverse the map column reading to compensate for pyglet's y-origin.
-        for y in xrange(source_img.height - tile_height, margin - tile_height,
-            -tile_height - spacing):
-            for x in xrange(margin, source_img.width, tile_width + spacing):
-                img_part = self.load_image_part(filename, x, y - spacing, tile_width, tile_height)
-                images.append(img_part)
-        return images
+    # def __init__(self):
+        # self.pyglet = __import__('pyglet')
+        # self._img_cache = {} # {name: image}
 
-    def load_image_file_like(self, file_like_obj, colorkey=None): # -> image
-        # pyglet.image.load can load from a path and from a file-like object
-        # that is why here it is redirected to the other method
-        return self.load_image(file_like_obj, colorkey, file_like_obj)
+    # def load_image(self, filename, colorkey=None, fileobj=None):
+        # img = self._img_cache.get(filename, None)
+        # if img is None:
+            # if fileobj:
+                # img = self.pyglet.image.load(filename, fileobj, self.pyglet.image.codecs.get_decoders("*.png")[0])
+            # else:
+                # img = self.pyglet.image.load(filename)
+            # self._img_cache[filename] = img
+        # return img
+
+    # def load_image_part(self, filename, x, y, w, h, colorkey=None):
+        # image = self.load_image(filename, colorkey)
+        # img_part = image.get_region(x, y, w, h)
+        # return img_part
+
+
+    # def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+        # source_img = self.load_image(filename, colorkey)
+        # images = []
+        # # Reverse the map column reading to compensate for pyglet's y-origin.
+        # for y in xrange(source_img.height - tile_height, margin - tile_height,
+            # -tile_height - spacing):
+            # for x in xrange(margin, source_img.width, tile_width + spacing):
+                # img_part = self.load_image_part(filename, x, y - spacing, tile_width, tile_height)
+                # images.append(img_part)
+        # return images
+
+    # def load_image_file_like(self, file_like_obj, colorkey=None): # -> image
+        # # pyglet.image.load can load from a path and from a file-like object
+        # # that is why here it is redirected to the other method
+        # return self.load_image(file_like_obj, colorkey, file_like_obj)
 
 #-------------------------------------------------------------------------------
 class TileMap(object):
@@ -1084,6 +1084,45 @@ class ResourceLoaderPygame(AbstractResourceLoader):
         pass
 
     
+
+#-------------------------------------------------------------------------------
+class ResourceLoaderPyglet(AbstractResourceLoader):
+
+    def __init__(self):
+        AbstractResourceLoader.__init__(self)
+        self.pyglet = __import__('pyglet')
+
+    def _load_image(self, filename, colorkey=None, fileobj=None):
+        img = self._img_cache.get(filename, None)
+        if img is None:
+            if fileobj:
+                img = self.pyglet.image.load(filename, fileobj, self.pyglet.image.codecs.get_decoders("*.png")[0])
+            else:
+                img = self.pyglet.image.load(filename)
+            self._img_cache[filename] = img
+        return img
+
+    def _load_image_part(self, filename, x, y, w, h, colorkey=None):
+        image = self._load_image(filename, colorkey)
+        img_part = image.get_region(x, y, w, h)
+        return img_part
+
+    def _load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+        source_img = self._load_image(filename, colorkey)
+        images = []
+        # Reverse the map column reading to compensate for pyglet's y-origin.
+        for y in xrange(source_img.height - tile_height, margin - tile_height,
+            -tile_height - spacing):
+            for x in xrange(margin, source_img.width, tile_width + spacing):
+                img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
+                images.append(img_part)
+        return images
+
+    def _load_image_file_like(self, file_like_obj, colorkey=None): # -> image
+        # pyglet.image.load can load from a path and from a file-like object
+        # that is why here it is redirected to the other method
+        return self._load_image(file_like_obj, colorkey, file_like_obj)
+
 
 #-------------------------------------------------------------------------------
 
