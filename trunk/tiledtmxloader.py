@@ -152,15 +152,15 @@ import os.path
         # ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
         # img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
         # source_rect = self.pygame.Rect(x, y, w, h)
-        
+
         # ## ISSUE 8:
         # ## Set the colorkey BEFORE we blit the source_img
         # if colorkey:
             # img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
             # img_part.fill(colorkey)
-            
+
         # img_part.blit(source_img, (0, 0), source_rect)
-        
+
         # return img_part
 
     # def load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
@@ -1055,15 +1055,15 @@ class ResourceLoaderPygame(AbstractResourceLoader):
         ##      img_part = self.pygame.Surface((tile_width, tile_height), 0, source_img)
         img_part = self.pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
         source_rect = self.pygame.Rect(x, y, w, h)
-        
+
         ## ISSUE 8:
         ## Set the colorkey BEFORE we blit the source_img
         if colorkey:
             img_part.set_colorkey(colorkey, self.pygame.RLEACCEL)
             img_part.fill(colorkey)
-            
+
         img_part.blit(source_img, (0, 0), source_rect)
-        
+
         return img_part
 
     def _load_image_file_like(self, file_like_obj, colorkey=None): # -> image
@@ -1083,7 +1083,7 @@ class ResourceLoaderPygame(AbstractResourceLoader):
     def get_sprites(self):
         pass
 
-    
+
 
 #-------------------------------------------------------------------------------
 class ResourceLoaderPyglet(AbstractResourceLoader):
@@ -1145,9 +1145,126 @@ class RendererPygame(object):
             self._layer_id = layer_id
             self.content2D = []
             self.level = 1
+            self.tilewidth = self._world_map.tilewidth
+            self.tileheight = self._world_map.tileheight
+            self.width = self._world_map.width
+            self.height = self._world_map.height
+
             self.collapse(1)
 
+    #    0         1         2
+    #    0    1    2    3    4
+    # 0 0 +----+----+----+----+
+    #     |    |    |    |    |
+    #   1 +----+----+----+----+
+    #     |    |    |    |    |
+    # 1 2 +----+----+----+----+
+    #     |    |    |    |    |
+    #   3 +----+----+----+----+
+
+
         def collapse(self, level=1):
+            self.level = level
+
+            pygame = __import__('pygame')
+
+            del self.content2D
+            self.content2D = []
+            if level == 1:
+                layer = self._world_map.layers[self._layer_id]
+
+                # generate the needed lists
+                for xpos in xrange(self._world_map.width):
+                    self.content2D.append([None] * self._world_map.height)
+
+                # fill them
+                for xpos in xrange(self._world_map.width):
+                    for ypos in xrange(self._world_map.height):
+                        idx = layer.content2D[xpos][ypos]
+                        if idx:
+                            offx, offy, img = self._resource_loader.indexed_tiles[idx]
+                            world_x = xpos * self._world_map.tilewidth + offx
+                            world_y = ypos * self._world_map.tileheight + offy
+                            w, h = img.get_size()
+                            rect = pygame.Rect(world_x, world_y, w, h)
+
+                            self.content2D[xpos][ypos] = RendererPygame.Sprite(img, rect)
+
+                self.tilewidth  = self._world_map.tilewidth
+                self.tileheight = self._world_map.tileheight
+                self.width = self._world_map.width
+                self.height = self._world_map.height
+            else:
+
+                new_tilewidth = self._world_map.tilewidth * level
+                new_tileheight = self._world_map.tileheight * level
+                new_width = int(self._world_map.width / float(level) + 0.5) + 1 # for odd levels
+                new_height = int(self._world_map.height / float(level) + 0.5) + 1 # for odd levels
+
+                layer = self._world_map.layers[self._layer_id]
+
+                # generate the needed lists
+                for xpos in xrange(new_width):
+                    self.content2D.append([None] * new_height)
+
+                print "len content2D:", len(self.content2D), new_width, new_height, self._world_map.width, self._world_map.height, level
+                print "tile dim:", new_tilewidth, new_tileheight, self._world_map.tilewidth, self._world_map.tileheight
+
+                # fill them
+                for xpos in xrange(0, new_width):
+                    for ypos in xrange(0, new_height):
+                        coords = self._get_list_of_quad_coord(xpos, ypos, level)
+                        sprite = self._get_sprite_from(coords, layer, pygame)
+                        self.content2D[xpos][ypos] = sprite
+
+                print "len content2D:", len(self.content2D)
+                self.tilewidth  = new_tilewidth
+                self.tileheight = new_tileheight
+                self.width = new_width
+                self.height = new_height
+
+        @staticmethod
+        def _get_list_of_quad_coord(xpos, ypos, level=2):
+            xpos *= level
+            ypos *= level
+
+            coords = []
+            for y in xrange(ypos, ypos + level):
+                for x in xrange(xpos, xpos + level):
+                    coords.append((x, y))
+            return coords
+
+        def _get_sprite_from(self, coords, layer, pygame):
+            # if __debug__: print "get sprite from"
+            sprites = []
+            for xpos, ypos in coords:
+                if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
+                    # print "continue on coord:", xpos, ypos
+                    continue
+                idx = layer.content2D[xpos][ypos]
+                if idx:
+                    offx, offy, img = self._resource_loader.indexed_tiles[idx]
+                    world_x = xpos * self._world_map.tilewidth + offx
+                    world_y = ypos * self._world_map.tileheight + offy
+                    w, h = img.get_size()
+                    rect = pygame.Rect(world_x, world_y, w, h)
+
+                    sprites.append(RendererPygame.Sprite(img, rect))
+            if sprites:
+                rect = sprites[0].rect.unionall(sprites)
+                image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
+                image.fill((0, 0, 0, 0))
+                for spr in sprites:
+                    x, y = rect.topleft
+                    image.blit(spr.image, spr.rect.move(-x, -y))
+
+                del sprites
+                return RendererPygame.Sprite(image, rect)
+
+            return None
+
+
+        def _collapse(self, level=1):
             self.level = level
             pygame = __import__('pygame')
 
@@ -1207,17 +1324,7 @@ class RendererPygame(object):
                         surf.set_colorkey((255, 0, 255), pygame.RLEACCEL)
                         surf = surf.convert_alpha()
                         surf = pygame.Surface(size, flags, depth)
-                        
-                        
-                        # colorkey = img.get_colorkey()
-                        # if colorkey:
-                            # surf.fill(colorkey)
-                            # surf.set_colorkey(colorkey, pygame.RLEACCEL)
-                            # surf = surf.convert()
-                        # else:
-                            # surf.fill((255, 0, 255, 0))
-                            # surf = surf.convert_alpha()
-                            
+
                         # surf = surf.convert()
                         info = surf.get_width() - self.tilewidth, surf.get_height() - self.tileheight, surf
                         for x in range(level):
@@ -1226,11 +1333,15 @@ class RendererPygame(object):
                                 if orig_info:
                                     surf.blit(orig_info[2], (x * self._world_map.tilewidth + info[0] - orig_info[0], y * self._world_map.tileheight + info[1] - orig_info[1]))
                                 idx += 1
+                        offx, offy, img = info
+                        info = xpos * self.tilewidth + offx, ypos * self.tileheight + offy, img
                     else:
                         idx = layer.content2D[xpos][ypos]
                         info = None
                         if idx:
-                            info = self._resource_loader.indexed_tiles[img_idx]
+                            offx, offy, img = self._resource_loader.indexed_tiles[img_idx]
+                            info = xpos * self._world_map.tilewidth + offx, ypos * self._world_map.tileheight + offy, img
+
 
                     self.content2D[xpos][ypos] = info
 
@@ -1316,17 +1427,20 @@ class RendererPygame(object):
             tile_h = layer.tileheight
             self__cam_offset_x = self._cam_offset_x + world_layer.x
             self__cam_offset_y = self._cam_offset_y + world_layer.y
-            
+
             left = int(round(float(self__cam_offset_x) / tile_w)) - self._margin
             right = int(round(float(self__cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
             top = int(round(float(self__cam_offset_y) / tile_h)) - self._margin
             bottom = int(round(float(self__cam_offset_y + self._cam_height) / tile_h)) + self._margin + 1
-            
+
             left = left if left > 0 else 0
             right = right if right < layer.width else layer.width
             top = top if top > 0 else 0
             bottom = bottom if bottom < layer.height else layer.height
-            
+
+            # print tile_w, tile_h
+            # print left, right, top, bottom
+
             # optimizations
             if surf_blit is None:
                 surf_blit = surf.blit
@@ -1339,8 +1453,8 @@ class RendererPygame(object):
             # render
             for ypos in range(top, bottom):
                 # draw sprites in this layer (skip the ones outside visible area/map)
-                tile_y = ypos * tile_h
-                while spr_idx < len_sprites and sprite_rect.y + sprite_rect.height <= tile_y + tile_h:
+                while spr_idx < len_sprites and sprite_rect.y + sprite_rect.height <= ypos * tile_h + tile_h:
+                    # TODO: maybe use a rect.colliderect with camera rect? or cam.rect.collidelistall(sprites) and then draw only the colliding ones
                     # this is the fastest check since it stops at first expression failing
                     if not (top * tile_h > sprite_rect.y + sprite_rect.height or \
                        bottom * tile_h < sprite_rect.y or \
@@ -1353,14 +1467,12 @@ class RendererPygame(object):
                         sprite_rect = sprite.rect
                 # next line of the map
                 for xpos in range(left, right):
-                    img_idx = layer_content2D[xpos][ypos]
-                    if img_idx:
-                        # get the actual image and its offset
-                        offx, offy, screen_img = img_idx
-                        # add offset in number of tiles
-                        pos = xpos * tile_w - self__cam_offset_x + offx, tile_y - self__cam_offset_y + offy
-                        # draw image at right position using its offset
-                        surf_blit(screen_img, pos)
+                    # try:
+                        tile_sprite = layer_content2D[xpos][ypos]
+                        if tile_sprite:
+                            surf_blit(tile_sprite.image, tile_sprite.rect.move( - self__cam_offset_x,  - self__cam_offset_y), tile_sprite.source_rect, tile_sprite.flags)
+                    # except Exception, e:
+                        # print xpos, ypos, len(layer_content2D), e
 
     # def set_layer_paralax_factor(layer_id, factor_x, factor_y=None, center_x=0, center_y=0):
         # self._world_map[layer_id].paralax_factor_x = factor_x
@@ -1435,16 +1547,13 @@ def demo_pygame(file_name):
     renderer_render_layer = renderer.render_layer
     renderer_set_camera_position = renderer.set_camera_position
     pygame_display_flip = pygame.display.flip
-    
+
     t = 0
 
     # mainloop
     while running:
         dt = clock_tick()#60.0)
         t += dt
-        if t > 1000:
-            t = 0
-            print clock.get_fps()
 
         # event handling
         for event in pygame_event_get():
@@ -1498,6 +1607,9 @@ def demo_pygame(file_name):
                     else:
                         print "layer", idx, " does not exist on this map!"
             elif event.type == pygame.USEREVENT:
+                t = 0
+                print clock.get_fps()
+
                 if show_message:
                     s = "Number of layers: %i (use 0-9 to toggle)   F1-F2 for other functions   Frames Per Second: %.2f" % (len(world_map.layers), clock.get_fps())
                     message = font.render(s, 0, (255,255,255), (0,0,0)).convert()
@@ -1688,7 +1800,7 @@ if __name__ == '__main__':
     # p.strip_dirs()
     # p.sort_stats('time')
     # p.print_stats()
-    
+
     main()
 
 
