@@ -96,6 +96,40 @@ class MapLoadTests(unittest.TestCase):
         if _has_pygame:
             world_map = tiledtmxloader.TileMapParser().parse_decode("minix_base64_gzip_dtd.tmx")
             tiledtmxloader.ResourceLoaderPygame().load(world_map)
+            
+    def test_get_list_of_quad_coords(self):
+        if _has_pygame:
+            layer = tiledtmxloader.RendererPygame._Layer
+                                                #xpos, ypos, level=2
+            coords = layer._get_list_of_quad_coord(0, 0, 1)
+            expected = ((0, 0), )
+            self.compare(expected, coords)
+            
+            coords = layer._get_list_of_quad_coord(0, 0, 2)
+            expected = ((0, 0), (1, 0), (0, 1), (1, 1))
+            self.compare(expected, coords)
+            
+            coords = layer._get_list_of_quad_coord(1, 1, 3)
+            expected = ((3, 3), (4, 3), (5, 3), (3, 4), (4, 4), (5, 4), (3, 5), (4, 5), (5, 5))
+            self.compare(expected, coords)
+            
+    def compare(self, expected, captured):
+        """
+        Helper method to compare to lists.
+        """
+        if len(expected) != len(captured):
+            self.fail(str.format("Not same number of expected and captured actions! \n expected: {0} \n captured: {1}", \
+                                    ", ".join(map(str, expected)), \
+                                    ", ".join(map(str, captured))))
+        for idx, expected_action in enumerate(expected):
+            action = captured[idx]
+            if action != expected_action:
+                self.fail(str.format("captured action does not match with expected action! \n expected: {0} \n captured: {1}", \
+                                    ", ".join(map(str, expected)), \
+                                    ", ".join(map(str, captured))))
+
+    
+            
 
     #--- pyglet tests ---#
     def test_load_map_from_cur_dir_pyglet(self):
