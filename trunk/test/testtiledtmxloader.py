@@ -101,15 +101,15 @@ class MapLoadTests(unittest.TestCase):
         if _has_pygame:
             layer = tiledtmxloader.RendererPygame._Layer
                                                 #xpos, ypos, level=2
-            coords = layer._get_list_of_quad_coord(0, 0, 1)
+            coords = layer._get_list_of_quad_coord(0, 0, 1, 10, 10)
             expected = ((0, 0), )
             self.compare(expected, coords)
             
-            coords = layer._get_list_of_quad_coord(0, 0, 2)
+            coords = layer._get_list_of_quad_coord(0, 0, 2, 10, 10)
             expected = ((0, 0), (1, 0), (0, 1), (1, 1))
             self.compare(expected, coords)
             
-            coords = layer._get_list_of_quad_coord(1, 1, 3)
+            coords = layer._get_list_of_quad_coord(1, 1, 3, 10, 10)
             expected = ((3, 3), (4, 3), (5, 3), (3, 4), (4, 4), (5, 4), (3, 5), (4, 5), (5, 5))
             self.compare(expected, coords)
             
