@@ -1266,6 +1266,8 @@ class RendererPygame(object):
             self._layers.append(self._Layer(idx, resource_loader))
 
         self._layer_sprites = {} # {layer_id:[sprites]}
+        self.pygame = __import__('pygame')
+
 
     def add_sprite(self, layer_id, sprite):
         if layer_id not in self._layer_sprites:
@@ -1319,23 +1321,28 @@ class RendererPygame(object):
         world_layer = self._world_map.layers[layer_id]
         if world_layer.visible:
 
+            # TODO: make a cam rect when setting camera position?
+            self__cam_offset_x = self._cam_offset_x + world_layer.x
+            self__cam_offset_y = self._cam_offset_y + world_layer.y
+
             # sprites
             spr_idx = 0
             len_sprites = 0
             sprites = self._layer_sprites.get(layer_id)
             if sprites:
+                cam_rect = self.pygame.Rect(self__cam_offset_x, self__cam_offset_y, self._cam_width, self._cam_height)
+                all_sprites = sprites
+                sprites = [all_sprites[idx] for idx in cam_rect.collidelistall(all_sprites)]
                 if sort_key:
                     sprites.sort(key=sort_key)
                 sprite = sprites[0]
                 len_sprites = len(sprites)
                 sprite_rect = sprite.rect
+
             layer = self._layers[layer_id]
 
             tile_w = layer.tilewidth
             tile_h = layer.tileheight
-            self__cam_offset_x = self._cam_offset_x + world_layer.x
-            self__cam_offset_y = self._cam_offset_y + world_layer.y
-
             left = int(round(float(self__cam_offset_x) / tile_w)) - self._margin
             right = int(round(float(self__cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
             top = int(round(float(self__cam_offset_y) / tile_h)) - self._margin
@@ -1357,14 +1364,15 @@ class RendererPygame(object):
             # render
             for ypos in range(top, bottom):
                 # draw sprites in this layer (skip the ones outside visible area/map)
-                while spr_idx < len_sprites and sprite_rect.y + sprite_rect.height <= ypos * tile_h + tile_h:
+                y = ypos + 1
+                while spr_idx < len_sprites and sprite_rect.bottom <= y * tile_h:
                     # TODO: maybe use a rect.colliderect with camera rect? or cam.rect.collidelistall(sprites) and then draw only the colliding ones
                     # this is the fastest check since it stops at first expression failing
-                    if not (top * tile_h > sprite_rect.y + sprite_rect.height or \
-                       bottom * tile_h < sprite_rect.y or \
-                       left * tile_w > sprite_rect.x + sprite_rect.width or \
-                       right * tile_w < sprite_rect.x):
-                        surf_blit(sprite.image, sprite_rect.move(-self__cam_offset_x, -self__cam_offset_y), sprite.source_rect, sprite.flags)
+                    # if not (top * tile_h > sprite_rect.y + sprite_rect.height or \
+                       # bottom * tile_h < sprite_rect.y or \
+                       # left * tile_w > sprite_rect.x + sprite_rect.width or \
+                       # right * tile_w < sprite_rect.x):
+                    surf_blit(sprite.image, sprite_rect.move(-self__cam_offset_x, -self__cam_offset_y), sprite.source_rect, sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
                         sprite = sprites[spr_idx]
