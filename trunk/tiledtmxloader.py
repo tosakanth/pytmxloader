@@ -740,9 +740,9 @@ class TileMapParser(object):
     def _parse_tsx(self, file_name, tile_set, world_map):
         # ISSUE 5: the *.tsx file is probably relative to the *.tmx file
         if not os.path.isabs(file_name):
-            print "map file name", self.map_file_name
+            # print "map file name", self.map_file_name
             file_name = self._get_abs_path(self.map_file_name, file_name)
-        print "tsx filename: ", file_name
+        # print "tsx filename: ", file_name
         # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
         file = None
         try:
@@ -1177,8 +1177,8 @@ class RendererPygame(object):
                 new_width = int(self._world_map.width / float(level) + 0.5)
                 new_height = int(self._world_map.height / float(level) + 0.5)
                 
-                print "old size", self._world_map.width, self._world_map.height
-                print "new size", new_width, new_height
+                # print "old size", self._world_map.width, self._world_map.height
+                # print "new size", new_width, new_height
 
                 del self.content2D
                 self.content2D = []
@@ -1186,8 +1186,8 @@ class RendererPygame(object):
                 for xpos in xrange(new_width):
                     self.content2D.append([None] * new_height)
 
-                print "len content2D:", len(self.content2D), new_width, new_height, self._world_map.width, self._world_map.height, level
-                print "tile dim:", new_tilewidth, new_tileheight, self._world_map.tilewidth, self._world_map.tileheight
+                # print "len content2D:", len(self.content2D), new_width, new_height, self._world_map.width, self._world_map.height, level
+                # print "tile dim:", new_tilewidth, new_tileheight, self._world_map.tilewidth, self._world_map.tileheight
 
                 # fill them
                 for ypos_new in xrange(0, new_height):
@@ -1197,7 +1197,7 @@ class RendererPygame(object):
                             sprite = self._get_sprite_from(coords, layer, pygame)
                             self.content2D[xpos_new][ypos_new] = sprite
 
-                print "len content2D:", len(self.content2D)
+                # print "len content2D:", len(self.content2D)
                 self.tilewidth  = new_tilewidth
                 self.tileheight = new_tileheight
                 self.width = new_width
@@ -1353,10 +1353,6 @@ class RendererPygame(object):
             if surf_blit is None:
                 surf_blit = surf.blit
             layer_content2D = layer.content2D
-            # world_top = top * tile_h
-            # world_bottom = bottom * tile_h
-            # world_left = left * tile_w
-            # world_right = right * tile_w
 
             # render
             for ypos in range(top, bottom):
@@ -1493,11 +1489,11 @@ def demo_pygame(file_name):
                     # make sure this layer exists
                     if idx < len(world_map.layers):
                         if event.mod & pygame.KMOD_CTRL:
-                            # collapse
+                            # uncollapse
                             renderer.set_collapse_level(idx, max(renderer.get_collapse_level(idx) - 1, 1))
                             print "layer has collapse level:", renderer.get_collapse_level(idx)
                         elif event.mod & pygame.KMOD_SHIFT:
-                            # uncollapse
+                            # collapse
                             renderer.set_collapse_level(idx, renderer.get_collapse_level(idx) + 1)
                             print "layer has collapse level:", renderer.get_collapse_level(idx)
                         elif event.mod & pygame.KMOD_ALT:
@@ -1695,7 +1691,7 @@ def main():
     elif args[1] == 'pyglet':
         demo_pyglet(args[0])
     else:
-        print 'missing framework, usage: python test.py mapfile.tmx [pygame|pyglet]'
+        print('missing framework, usage: python test.py mapfile.tmx [pygame|pyglet]')
         sys.exit(-1)
 
 #-------------------------------------------------------------------------------
