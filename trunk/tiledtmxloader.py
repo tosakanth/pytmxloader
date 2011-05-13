@@ -1304,6 +1304,13 @@ class RendererPygame(object):
         # return False
 
     def set_camera_position(self, offset_x, offset_y, width, height, margin=0):
+        # if offset_x != self._cam_offset_x or \
+           # offset_y != self._cam_offset_y or \
+           # width != self._cam_width or \
+           # height != self._cam_height or \
+           # margin != self._margin:
+            # for layer in self._layers:
+                # layer.cam_dirty = True
         self._cam_offset_x = int(offset_x)
         self._cam_offset_y = int(offset_y)
         self._cam_width = width
@@ -1317,49 +1324,49 @@ class RendererPygame(object):
         level = max(1, level)
         self._layers[layer_id].collapse(level)
 
-    def render_layer(self, surf, layer_id, surf_blit=None, sort_key=lambda spr: spr.rect.y):
+    def render_layer(self, surf, layer_id, sort_key=lambda spr: spr.rect.y):
         world_layer = self._world_map.layers[layer_id]
         if world_layer.visible:
 
-            # TODO: make a cam rect when setting camera position?
-            self__cam_offset_x = self._cam_offset_x + world_layer.x
-            self__cam_offset_y = self._cam_offset_y + world_layer.y
-
-            # sprites
-            spr_idx = 0
-            len_sprites = 0
-            sprites = self._layer_sprites.get(layer_id)
-            if sprites:
-                cam_rect = self.pygame.Rect(self__cam_offset_x, self__cam_offset_y, self._cam_width, self._cam_height)
-                all_sprites = sprites
-                sprites = [all_sprites[idx] for idx in cam_rect.collidelistall(all_sprites)]
-                if sort_key:
-                    sprites.sort(key=sort_key)
-                sprite = sprites[0]
-                len_sprites = len(sprites)
-                sprite_rect = sprite.rect
-
+            # optimizations
             layer = self._layers[layer_id]
-
-            tile_w = layer.tilewidth
+            surf_blit = surf.blit
+            layer_content2D = layer.content2D
+            
+            # tile_w = layer.tilewidth
             tile_h = layer.tileheight
-            left = int(round(float(self__cam_offset_x) / tile_w)) - self._margin
-            right = int(round(float(self__cam_offset_x + self._cam_width) / tile_w)) + self._margin + 1
-            top = int(round(float(self__cam_offset_y) / tile_h)) - self._margin
-            bottom = int(round(float(self__cam_offset_y + self._cam_height) / tile_h)) + self._margin + 1
+
+            cam_world_pos_x = self._cam_offset_x + world_layer.x
+            cam_world_pos_y = self._cam_offset_y + world_layer.y
+
+            # camera bounds, restricting number of tiles to draw
+            left = int(round(float(cam_world_pos_x) / layer.tilewidth)) - self._margin
+            right = int(round(float(cam_world_pos_x + self._cam_width) / layer.tilewidth)) + self._margin + 1
+            top = int(round(float(cam_world_pos_y) / tile_h)) - self._margin
+            bottom = int(round(float(cam_world_pos_y + self._cam_height) / tile_h)) + self._margin + 1
 
             left = left if left > 0 else 0
             right = right if right < layer.width else layer.width
             top = top if top > 0 else 0
             bottom = bottom if bottom < layer.height else layer.height
-            
-            # print tile_w, tile_h
-            # print left, right, top, bottom
 
-            # optimizations
-            if surf_blit is None:
-                surf_blit = surf.blit
-            layer_content2D = layer.content2D
+            # sprites
+            spr_idx = 0
+            len_sprites = 0
+            all_sprites = self._layer_sprites.get(layer_id)
+            if all_sprites:
+                # TODO: make filter visible sprites optional (maybe sorting too)
+                # use a marging around it
+                cam_rect = self.pygame.Rect(cam_world_pos_x - self._margin, cam_world_pos_y - self._margin, \
+                                            self._cam_width + self._margin, self._cam_height + self._margin)
+                sprites = [all_sprites[idx] for idx in cam_rect.collidelistall(all_sprites)]
+                if sprites:
+                    # could happend that all sprites are not visible by the camera
+                    if sort_key:
+                        sprites.sort(key=sort_key)
+                    sprite = sprites[0]
+                    len_sprites = len(sprites)
+                    sprite_rect = sprite.rect
 
             # render
             for ypos in range(top, bottom):
@@ -1372,19 +1379,16 @@ class RendererPygame(object):
                        # bottom * tile_h < sprite_rect.y or \
                        # left * tile_w > sprite_rect.x + sprite_rect.width or \
                        # right * tile_w < sprite_rect.x):
-                    surf_blit(sprite.image, sprite_rect.move(-self__cam_offset_x, -self__cam_offset_y), sprite.source_rect, sprite.flags)
+                    surf_blit(sprite.image, sprite_rect.move(-cam_world_pos_x, -cam_world_pos_y), sprite.source_rect, sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
                         sprite = sprites[spr_idx]
                         sprite_rect = sprite.rect
                 # next line of the map
                 for xpos in range(left, right):
-                    # try:
-                        tile_sprite = layer_content2D[xpos][ypos]
-                        if tile_sprite:
-                            surf_blit(tile_sprite.image, tile_sprite.rect.move( - self__cam_offset_x,  - self__cam_offset_y), tile_sprite.source_rect, tile_sprite.flags)
-                    # except Exception, e:
-                        # print xpos, ypos, len(layer_content2D), e
+                    tile_sprite = layer_content2D[xpos][ypos]
+                    if tile_sprite:
+                        surf_blit(tile_sprite.image, tile_sprite.rect.move( - cam_world_pos_x,  - cam_world_pos_y), tile_sprite.source_rect, tile_sprite.flags)
 
     # def set_layer_paralax_factor(layer_id, factor_x, factor_y=None, center_x=0, center_y=0):
         # self._world_map[layer_id].paralax_factor_x = factor_x
@@ -1397,6 +1401,32 @@ class RendererPygame(object):
 
 
 #-------------------------------------------------------------------------------
+
+class Dude(RendererPygame.Sprite):
+
+    def __init__(self, img, rect):
+        super(Dude, self).__init__(img, rect)
+        self.random = __import__('random')
+        self.velocity_x = 0
+        self.velocity_y = 0
+        self.rect.center = (self.random.randint(100, 4000), self.random.randint(100, 4000))
+        
+    def update(self, dt):
+        if self.random.random() < 0.05:
+            if self.velocity_x:
+                self.velocity_x = 0
+                self.velocity_y = 0
+            else:
+                self.velocity_x = self.random.randint(-10, 10)
+                self.velocity_y = self.random.randint(-10, 10)
+        x, y = self.rect.center
+        x += self.velocity_x * dt * 0.005
+        y += self.velocity_y * dt * 0.005
+        self.rect.center = x, y
+        
+        
+
+
 def demo_pygame(file_name):
     pygame = __import__('pygame')
 
@@ -1438,15 +1468,16 @@ def demo_pygame(file_name):
     pygame.time.set_timer(pygame.USEREVENT, 1000)
 
     # add additional sprites
-    num_sprites = 100
+    num_sprites = 1000
     my_sprites = []
     for i in range(num_sprites):
-        # j = num_sprites - i
+        j = num_sprites - i
         # image = pygame.Surface((20, j*40.0/num_sprites+10))
-        # image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255))
-        image = pygame.Surface((60, 100))
-        image.fill((255, 255, 255))
-        sprite = RendererPygame.Sprite(image, image.get_rect())
+        image = pygame.Surface((50, 70))
+        image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255))
+        # image.fill((255, 255, 255))
+        # sprite = RendererPygame.Sprite(image, image.get_rect())
+        sprite = Dude(image, image.get_rect())
         my_sprites.append(sprite)
     # renderer.add_sprites(1, my_sprites)
 
@@ -1546,7 +1577,9 @@ def demo_pygame(file_name):
 
         # update sprites position
         for i, spr in enumerate(my_sprites):
-            spr.rect.center = cam_offset_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_offset_y + i * 3 + screen_height // 2
+            spr.update(dt)
+            if i == 0:
+                spr.rect.center = cam_offset_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_offset_y + i * 3 + screen_height // 2
 
         # adjust camera according the keypresses
         renderer_set_camera_position(cam_offset_x, cam_offset_y, screen_width, screen_height, 3)
@@ -1556,7 +1589,7 @@ def demo_pygame(file_name):
 
         # render the map
         for id in layer_range:
-            renderer_render_layer(screen, id, screen.blit)
+            renderer_render_layer(screen, id)
 
         # map objects
         if draw_obj:
