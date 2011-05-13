@@ -1417,12 +1417,10 @@ class Dude(RendererPygame.Sprite):
                 self.velocity_x = 0
                 self.velocity_y = 0
             else:
-                self.velocity_x = self.random.randint(-10, 10)
-                self.velocity_y = self.random.randint(-10, 10)
-        x, y = self.rect.center
-        x += self.velocity_x * dt * 0.005
-        y += self.velocity_y * dt * 0.005
-        self.rect.center = x, y
+                self.velocity_x = self.random.randint(-10, 10) * 0.005
+                self.velocity_y = self.random.randint(-10, 10) * 0.005
+        self.rect.centerx += self.velocity_x * dt
+        self.rect.centery += self.velocity_y * dt
         
         
 
@@ -1576,10 +1574,11 @@ def demo_pygame(file_name):
             cam_offset_x += speed
 
         # update sprites position
-        for i, spr in enumerate(my_sprites):
+        for spr in my_sprites:
             spr.update(dt)
-            if i == 0:
-                spr.rect.center = cam_offset_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_offset_y + i * 3 + screen_height // 2
+        # my_sprites[0].rect.center = cam_offset_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_offset_y + i * 3 + screen_height // 2
+        my_sprites[0].rect.center = cam_offset_x + screen_width // 2 , cam_offset_y + screen_height // 2
+        my_sprites[0].update(dt)
 
         # adjust camera according the keypresses
         renderer_set_camera_position(cam_offset_x, cam_offset_y, screen_width, screen_height, 3)
