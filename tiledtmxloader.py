@@ -997,7 +997,8 @@ class RendererPygame(object):
             #        |    |    |    |    |
             #   2' 4 +----+----+----+----+
 
-            assert level > 0, "collapse level has to be > 0, got: " + str(level)
+            if level < 1:
+                raise Exception("collapse level has to be > 0, got: " + str(level))
 
             if level != self.level:
                 self.level = level
@@ -1303,7 +1304,7 @@ def demo_pygame(file_name):
         j = num_sprites - i
         # image = pygame.Surface((20, j*40.0/num_sprites+10))
         image = pygame.Surface((50, 70), pygame.SRCALPHA)
-        image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255, 128))
+        image.fill(((255+200*j)%255, (2*j+255)%255, (5*j)%255, 200))
         # image.fill((255, 255, 255))
         # sprite = RendererPygame.Sprite(image, image.get_rect())
         sprite = Dude(image, image.get_rect())
