@@ -967,6 +967,14 @@ class RendererPygame(object):
             self.rect = rect # blit rect
             self.source_rect = source_rect
             self.flags = flags
+            self.is_flat = False
+            self.z = 0
+            
+        def get_draw_cond(self):
+            if self.is_flat:
+                return self.rect.top + self.z
+            else:
+                return self.rect.bottom
 
     class _Layer(object):
         def __init__(self, layer_id, resource_loader):
@@ -981,7 +989,6 @@ class RendererPygame(object):
             self.num_tiles_y = self._world_map.height
 
             self.collapse(1)
-
 
         def collapse(self, level=1):
 
@@ -1126,20 +1133,12 @@ class RendererPygame(object):
         for sprite in sprites:
             self.remove_sprite(layer, sprite)
 
-    def contains_sprite(self, idx, sprite):
-        sprites = self._layer_sprites.get(idx)
+    def contains_sprite(self, layer, sprite):
+        sprites = self._layer_sprites.get(layer)
         if sprites is not None:
             if sprite in sprites:
                 return True
         return False
-
-    # def contains_sprite(self, sprite):
-        # for layer in range(len(self._layer_sprites)):
-            # sprites = self._layer_sprites.get(layer)
-            # if sprites is not None:
-                # if sprite in sprites:
-                    # return True
-        # return False
 
     def set_camera_position(self, world_pos_x, world_pos_y, width, height, margin=0):
         self._cam_world_pos_x = int(world_pos_x)
@@ -1155,7 +1154,7 @@ class RendererPygame(object):
         level = max(1, level)
         self._layers[layer].collapse(level)
 
-    def render_layer(self, surf, world_layer, clip_sprites=True, sort_key=lambda spr: spr.rect.y):
+    def render_layer(self, surf, world_layer, clip_sprites=True, sort_key=lambda spr: spr.get_draw_cond()):
         if world_layer.visible:
 
             if world_layer.is_object_group:
@@ -1202,18 +1201,18 @@ class RendererPygame(object):
                         sprites.sort(key=sort_key)
                     sprite = sprites[0]
                     len_sprites = len(sprites)
-                    sprite_rect = sprite.rect
+                     
 
             # render
             for ypos in range(top, bottom):
                 # draw sprites in this layer (skip the ones outside visible area/map)
                 y = ypos + 1
-                while spr_idx < len_sprites and sprite_rect.bottom <= y * tile_h:
-                    surf_blit(sprite.image, sprite_rect.move(-cam_world_pos_x, -cam_world_pos_y), sprite.source_rect, sprite.flags)
+                # while spr_idx < len_sprites and sprite.rect.bottom <= y * tile_h:
+                while spr_idx < len_sprites and sprite.get_draw_cond() <= y * tile_h:
+                    surf_blit(sprite.image, sprite.rect.move(-cam_world_pos_x, -cam_world_pos_y - sprite.z), sprite.source_rect, sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
                         sprite = sprites[spr_idx]
-                        sprite_rect = sprite.rect
                 # next line of the map
                 for xpos in range(left, right):
                     tile_sprite = layer_content2D[xpos][ypos]
@@ -1309,9 +1308,11 @@ def demo_pygame(file_name):
         # sprite = RendererPygame.Sprite(image, image.get_rect())
         sprite = Dude(image, image.get_rect())
         my_sprites.append(sprite)
+    my_sprites[-1].z = 10
     # renderer.add_sprites(1, my_sprites)
 
     clip_sprites = True
+    hero_flat = False
 
     # optimizations
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
@@ -1348,6 +1349,9 @@ def demo_pygame(file_name):
                 elif event.key == pygame.K_F3:
                     clip_sprites = not clip_sprites
                     print "clip sprites:", clip_sprites
+                elif event.key == pygame.K_F4:
+                    hero_flat = not hero_flat
+                    print "hero is flat:", hero_flat
                 elif event.key == pygame.K_w:
                     cam_world_pos_y -= world_map.tileheight
                 elif event.key == pygame.K_s:
@@ -1416,7 +1420,10 @@ def demo_pygame(file_name):
         for spr in my_sprites:
             spr.update(dt)
         # my_sprites[0].rect.center = cam_world_pos_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_world_pos_y + i * 3 + screen_height // 2
+        my_sprites[0].is_flat = hero_flat
+        my_sprites[-1].is_flat = hero_flat
         my_sprites[0].rect.center = cam_world_pos_x + screen_width // 2 , cam_world_pos_y + screen_height // 2
+        my_sprites[-1].rect.center = cam_world_pos_x + screen_width // 2 + 20 , cam_world_pos_y + screen_height // 2
 
         # adjust camera according the keypresses
         renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y, screen_width, screen_height, 3)
