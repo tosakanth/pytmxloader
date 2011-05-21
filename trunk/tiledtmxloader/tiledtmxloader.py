@@ -718,21 +718,10 @@ class TileMapParser(object):
         Parses the map but additionally decodes the data.
         :return: instance of TileMap
         """
-        world_map = TileMapParser().parse(file_name)
+        world_map = self.parse(file_name)
         world_map.decode()
         return world_map
 
-    def parse_decode_load(self, file_name, image_loader):
-        u"""
-        Parses the data, decodes them and loads the images using the image_loader.
-        :return: instance of TileMap
-        """
-        world_map = self.parse_decode(file_name)
-        world_map.load(image_loader)
-        return world_map
-
-#  -----------------------------------------------------------------------------
-#  -----------------------------------------------------------------------------
 #  -----------------------------------------------------------------------------
 
 class AbstractResourceLoader(object):
