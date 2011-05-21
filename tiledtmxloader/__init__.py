@@ -10,7 +10,6 @@ It loads the \*.tmx files produced by Tiled.
 """
 
 if __debug__:
-    print __version__
     import sys
     sys.stdout.write(u'%s loading ... \n' % (__name__))
     import time
