@@ -52,10 +52,10 @@ import pyglet
 import tiledtmxloader
 
 #  -----------------------------------------------------------------------------
-class ResourceLoaderPyglet(AbstractResourceLoader):
+class ResourceLoaderPyglet(tiledtmxloader.AbstractResourceLoader):
 
     def __init__(self):
-        AbstractResourceLoader.__init__(self)
+        tiledtmxloader.AbstractResourceLoader.__init__(self)
 
     def _load_image(self, filename, colorkey=None, fileobj=None):
         img = self._img_cache.get(filename, None)
@@ -110,9 +110,10 @@ def demo_pyglet(file_name):
 
     """
 
+    import pyglet
     from pyglet.gl import glTranslatef, glLoadIdentity
 
-    world_map = TileMapParser().parse_decode(file_name)
+    world_map = tiledtmxloader.TileMapParser().parse_decode(file_name)
     # delta is the x/y position of the map view.
     # delta is a list because it can be accessed from the on_draw function.
     # This list can be used within the update method.
@@ -143,7 +144,8 @@ def demo_pyglet(file_name):
 
     keys = pyglet.window.key.KeyStateHandler()
     window.push_handlers(keys)
-    world_map.load(ImageLoaderPyglet())
+    resources = ResourceLoaderPyglet()
+    resources.load(world_map)
 
     def update(dt):
         # The speed is 3 by default.
@@ -165,7 +167,12 @@ def demo_pyglet(file_name):
     batch = pyglet.graphics.Batch()
     sprites = []
     for group_num, layer in enumerate(world_map.layers):
-        if layer.visible is False:
+        if not layer.visible:
+            continue
+        if layer.is_object_group:
+            # This is unimplemented in this minimal-case example code.
+            # Should you as a user of tiledtmxloader need this layer,
+            # I hope to have a separate demo using objects as well.
             continue
         group = pyglet.graphics.OrderedGroup(group_num)
         for ytile in xrange(layer.height):
@@ -177,7 +184,7 @@ def demo_pyglet(file_name):
                 image_id = layer.content2D[xtile][ytile]
                 if image_id:
                     # o_x and o_y are offsets. They are not helpful here.
-                    o_x, o_y, image_file = world_map.indexed_tiles[image_id]
+                    o_x, o_y, image_file = resources.indexed_tiles[image_id]
                     sprites.append(pyglet.sprite.Sprite(image_file,
                         world_map.tilewidth * xtile,
                         world_map.tileheight * (layer.height - ytile),
@@ -191,19 +198,11 @@ def demo_pyglet(file_name):
 def main():
 
     args = sys.argv[1:]
-    if len(args) != 2:
-        #print 'usage: python test.py mapfile.tmx [pygame|pyglet]'
-        print('usage: python %s your_map.tmx [pygame|pyglet]' % \
-            os.path.basename(__file__))
-        return
-
-    if args[1] == 'pygame':
-        demo_pygame(args[0])
-    elif args[1] == 'pyglet':
+    if len(args) == 1:
         demo_pyglet(args[0])
     else:
-        print('missing framework, usage: python test.py mapfile.tmx [pygame|pyglet]')
-        sys.exit(-1)
+        #print 'usage: python helperspyglet.py mapfile.tmx'
+        print('usage: python %s your_map.tmx' % os.path.basename(__file__))
 
 #  -----------------------------------------------------------------------------
 
