@@ -119,6 +119,7 @@ class RendererPygame(object):
     class Sprite(object):
         def __init__(self, image, rect, source_rect=None, flags=0):
             self.image = image
+            # TODO: dont use a rect for position
             self.rect = rect # blit rect
             self.source_rect = source_rect
             self.flags = flags
@@ -136,8 +137,9 @@ class RendererPygame(object):
             self._world_map = resource_loader.world_map
             self._resource_loader = resource_loader
             self._layer_id = layer_id
+            self.world_layer = self._world_map.layers[layer_id]
             self.content2D = []
-            self.level = -1 # start with an invalid level
+            self._level = -1 # start with an invalid level
             self.tile_width = self._world_map.tilewidth
             self.tile_height = self._world_map.tileheight
             self.num_tiles_x = self._world_map.width
@@ -146,9 +148,13 @@ class RendererPygame(object):
             self.paralax_factor_y = 1.0
             self.paralax_center_x = 0.0
             self.paralax_center_y = 0.0
+            self.sprites = []
 
             self.collapse(1)
 
+        def get_collapse_level(self):
+            return self._level
+            
         def collapse(self, level=1):
 
             #   +    0'        1'        2'
@@ -163,12 +169,11 @@ class RendererPygame(object):
             #        |    |    |    |    |
             #   2' 4 +----+----+----+----+
 
-            _img_cache = {}
             if level < 1:
                 raise Exception("collapse level has to be > 0, got: " + str(level))
 
-            if level != self.level:
-                self.level = level
+            if level != self._level:
+                self._level = level
 
                 layer = self._world_map.layers[self._layer_id]
                 if not layer.is_object_group:
@@ -191,6 +196,7 @@ class RendererPygame(object):
                     # print "tile dim:", new_tilewidth, new_tileheight, self._world_map.tilewidth, self._world_map.tileheight
 
                     # fill them
+                    _img_cache = {}
                     for ypos_new in xrange(0, new_height):
                         for xpos_new in xrange(0, new_width):
                             coords = self._get_list_of_neighbour_coord(xpos_new, ypos_new, level, self._world_map.width, self._world_map.height)
@@ -268,52 +274,50 @@ class RendererPygame(object):
                 return RendererPygame.Sprite(image, rect)
             return None
 
+        def add_sprite(self, sprite):
+            self.sprites.append(sprite)
+
+        def add_sprites(self, sprites):
+            for sprite in sprites:
+                self.add_sprite(sprite)
+
+        def remove_sprite(self, sprite):
+            if sprite in self.sprites:
+                self.sprites.remove(sprite)
+
+        def remove_sprites(self, sprites):
+            for sprite in sprites:
+                self.remove_sprite(sprite)
+
+        def contains_sprite(self, sprite):
+            if sprite in self.sprites:
+                return True
+            return False
+
+        def set_layer_paralax_factor(self, factor_x, factor_y=None):
+            self.paralax_factor_x = factor_x
+            if factor_y:
+                self.paralax_factor_y = factor_y
+            else:
+                self.paralax_factor_y = factor_x
+            
+        def get_layer_paralax_factor_x(self):
+            return self.paralax_factor_x
+
+        def get_layer_paralax_factor_y(self):
+            return self.paralax_factor_y
+
     def __init__(self, resource_loader):
         self._world_map = resource_loader.world_map
         self._cam_world_pos_x = 0
         self._cam_world_pos_y = 0
         self._cam_width = 10
         self._cam_height = 10
-        self._visible_x_range = []
-        self._visible_y_range = []
         self._layers = {} # {world_layer:_layer}
         for idx, layer in enumerate(self._world_map.layers):
             self._layers[layer] = self._Layer(idx, resource_loader)
 
         self._layer_sprites = {} # {layer_id:[sprites]}
-
-
-    def add_sprite(self, layer, sprite):
-        # TODO: move that into the layer class
-        if layer not in self._layer_sprites:
-            self._layer_sprites[layer] = []
-        self._layer_sprites[layer].append(sprite)
-
-    def add_sprites(self, layer, sprites):
-        # TODO: move that into the layer class
-        for sprite in sprites:
-            self.add_sprite(layer, sprite)
-
-    def remove_sprite(self, layer, sprite):
-        # TODO: move that into the layer class
-        sprites = self._layer_sprites.get(layer)
-        if sprites is not None and sprite in sprites:
-            sprites.remove(sprite)
-            if len(sprites) == 0:
-                del self._layer_sprites[layer]
-
-    def remove_sprites(self, layer, sprites):
-        # TODO: move that into the layer class
-        for sprite in sprites:
-            self.remove_sprite(layer, sprite)
-
-    def contains_sprite(self, layer, sprite):
-        # TODO: move that into the layer class
-        sprites = self._layer_sprites.get(layer)
-        if sprites is not None:
-            if sprite in sprites:
-                return True
-        return False
 
     def set_camera_position(self, world_pos_x, world_pos_y, width, height, margin=0):
         self._cam_width = width
@@ -322,23 +326,13 @@ class RendererPygame(object):
         self._cam_world_pos_y = int(world_pos_y) - height / 2
         self._margin = margin + 1
 
-    def get_collapse_level(self, layer):
-        # TODO: move that into the layer class
-        return self._layers[layer].level
+    def render_layer(self, surf, layer, clip_sprites=True, sort_key=lambda spr: spr.get_draw_cond()):
+        if layer.world_layer.visible:
 
-    def set_collapse_level(self, layer, level):
-        # TODO: move that into the layer class
-        level = max(1, level)
-        self._layers[layer].collapse(level)
-
-    def render_layer(self, surf, world_layer, clip_sprites=True, sort_key=lambda spr: spr.get_draw_cond()):
-        if world_layer.visible:
-
-            if world_layer.is_object_group:
+            if layer.world_layer.is_object_group:
                 return
 
             # optimizations
-            layer = self._layers[world_layer]
             surf_blit = surf.blit
             layer_content2D = layer.content2D
 
@@ -347,8 +341,8 @@ class RendererPygame(object):
                         # self.paralax_factor_y = 1.0
             # self.paralax_center_x = 0.0
 
-            cam_world_pos_x = self._cam_world_pos_x * layer.paralax_factor_x + world_layer.x
-            cam_world_pos_y = self._cam_world_pos_y * layer.paralax_factor_y + world_layer.y
+            cam_world_pos_x = self._cam_world_pos_x * layer.paralax_factor_x + layer.world_layer.x
+            cam_world_pos_y = self._cam_world_pos_y * layer.paralax_factor_y + layer.world_layer.y
 
             # camera bounds, restricting number of tiles to draw
             left = int(round(float(cam_world_pos_x) // layer.tile_width)) - self._margin
@@ -364,7 +358,7 @@ class RendererPygame(object):
             # sprites
             spr_idx = 0
             len_sprites = 0
-            all_sprites = self._layer_sprites.get(world_layer)
+            all_sprites = layer.sprites
             if all_sprites:
                 # TODO: make filter visible sprites optional (maybe sorting too)
                 # use a marging around it
@@ -398,26 +392,6 @@ class RendererPygame(object):
                     tile_sprite = layer_content2D[xpos][ypos]
                     if tile_sprite:
                         surf_blit(tile_sprite.image, tile_sprite.rect.move( - cam_world_pos_x,  -cam_world_pos_y), tile_sprite.source_rect, tile_sprite.flags)
-
-    def set_layer_paralax_factor(self, world_layer, factor_x, factor_y=None, center_x=0, center_y=0):
-        # TODO: move that into the layer class
-        layer = self._layers[world_layer]
-        layer.paralax_factor_x = factor_x
-        if factor_y:
-            layer.paralax_factor_y = factor_y
-        else:
-            layer.paralax_factor_y = factor_x
-        layer.paralax_center_x = center_x
-        layer.paralax_center_y = center_y
-        
-    def get_layer_paralax_factor_x(self, world_layer):
-        # TODO: move that into the layer class
-        return self._layers[world_layer].paralax_factor_x
-
-    def get_layer_paralax_factor_y(self, world_layer):
-        # TODO: move that into the layer class
-        return self._layers[world_layer].paralax_factor_y
-
 
 #  -----------------------------------------------------------------------------
 
@@ -563,22 +537,28 @@ def demo_pygame(file_name):
                         print "set pressed layer", pressed_layer
                         if event.mod & pygame.KMOD_CTRL:
                             # uncollapse
-                            idx = world_map.layers[idx]
-                            renderer.set_collapse_level(idx, max(renderer.get_collapse_level(idx) - 1, 1))
-                            print "layer has collapse level:", renderer.get_collapse_level(idx)
+                            # TODO: better interface
+                            render_layer = renderer._layers[world_map.layers[idx]]
+                            render_layer.collapse(max(render_layer.get_collapse_level() - 1, 1))
+                            print "layer has collapse level:", render_layer.get_collapse_level()
                         elif event.mod & pygame.KMOD_SHIFT:
                             # collapse
-                            idx = world_map.layers[idx]
-                            renderer.set_collapse_level(idx, renderer.get_collapse_level(idx) + 1)
-                            print "layer has collapse level:", renderer.get_collapse_level(idx)
+                            # TODO: better interface
+                            render_layer = renderer._layers[world_map.layers[idx]]
+                            render_layer.collapse(render_layer.get_collapse_level() + 1)
+                            print "layer has collapse level:", render_layer.get_collapse_level()
                         elif event.mod & pygame.KMOD_ALT:
                             # hero sprites
-                            idx = world_map.layers[idx]
-                            if renderer.contains_sprite(idx, my_sprites[0]):
-                                renderer.remove_sprites(idx, my_sprites)
+                            # TODO: better interface
+                            if renderer._layers[world_map.layers[idx]].contains_sprite(my_sprites[0]):
+                                # renderer.remove_sprites(idx, my_sprites)
+                                # TODO: better interface
+                                renderer._layers[world_map.layers[idx]].remove_sprites(my_sprites)
                                 print "removed hero sprites from layer", idx
                             else:
-                                renderer.add_sprites(idx, my_sprites)
+                                # renderer.add_sprites(idx, my_sprites)
+                                # TODO: better interface
+                                renderer._layers[world_map.layers[idx]].add_sprites(my_sprites)
                                 print "added hero sprites to layer", idx
                         else:
                             # visibility
@@ -588,14 +568,15 @@ def demo_pygame(file_name):
                         print "layer", idx, " does not exist on this map!"
                 elif event.key == pygame.K_UP:
                     if pressed_layer is not None:
-                        layer = world_map.layers[pressed_layer]
-                        renderer.set_layer_paralax_factor(layer, renderer.get_layer_paralax_factor_x(layer) + 0.1)
-                        print "increase paralax factox on layer", pressed_layer, " to:", renderer.get_layer_paralax_factor_x(layer)
+                        # TODO: better interface
+                        layer = renderer._layers[world_map.layers[pressed_layer]]
+                        layer.set_layer_paralax_factor(layer.get_layer_paralax_factor_x() + 0.1)
+                        print "increase paralax factox on layer", pressed_layer, " to:", layer.get_layer_paralax_factor_x()
                 elif event.key == pygame.K_DOWN:
                     if pressed_layer is not None:
-                        layer = world_map.layers[pressed_layer]
-                        renderer.set_layer_paralax_factor(layer, renderer.get_layer_paralax_factor_x(layer) - 0.1)
-                        print "reduced paralax factox on layer", pressed_layer, " to:", renderer.get_layer_paralax_factor_x(layer)
+                        layer = renderer._layers[world_map.layers[pressed_layer]]
+                        layer.set_layer_paralax_factor(layer.get_layer_paralax_factor_x() - 0.1)
+                        print "reduced paralax factox on layer", pressed_layer, " to:", layer.get_layer_paralax_factor_x()
                     
             elif event.type == pygame.USEREVENT:
                 t = 0
@@ -640,13 +621,14 @@ def demo_pygame(file_name):
         screen.fill((0,0,0))
 
         # render the map
+        # TODO: manage render layers
         for layer in world_map.layers:
             if layer.is_object_group:
                 # map objects
                 if draw_obj:
                     _draw_obj_group(screen, layer, cam_world_pos_x, cam_world_pos_y, font)
             else:
-                renderer_render_layer(screen, layer, clip_sprites)
+                renderer_render_layer(screen, renderer._layers[layer], clip_sprites)
 
 
         if show_message:
