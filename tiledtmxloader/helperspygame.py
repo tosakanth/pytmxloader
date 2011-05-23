@@ -27,6 +27,7 @@ It loads the \*.tmx files produced by Tiled.
 #     * 1.2.2.3 instead of 1.2-rc (release candidate)
 #     * 1.2.3.0 instead of 1.2-r (commercial distribution)
 #     * 1.2.3.5 instead of 1.2-r5 (commercial distribution with many bug fixes)
+from __future__ import division
 
 __revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
@@ -162,6 +163,7 @@ class RendererPygame(object):
             #        |    |    |    |    |
             #   2' 4 +----+----+----+----+
 
+            _img_cache = {}
             if level < 1:
                 raise Exception("collapse level has to be > 0, got: " + str(level))
 
@@ -173,8 +175,8 @@ class RendererPygame(object):
 
                     new_tilewidth = self._world_map.tilewidth * level
                     new_tileheight = self._world_map.tileheight * level
-                    new_width = int(self._world_map.width / float(level) + 0.5)
-                    new_height = int(self._world_map.height / float(level) + 0.5)
+                    new_width = int(self._world_map.width / level + 0.5)
+                    new_height = int(self._world_map.height / level + 0.5)
 
                     # print "old size", self._world_map.width, self._world_map.height
                     # print "new size", new_width, new_height
@@ -193,7 +195,7 @@ class RendererPygame(object):
                         for xpos_new in xrange(0, new_width):
                             coords = self._get_list_of_neighbour_coord(xpos_new, ypos_new, level, self._world_map.width, self._world_map.height)
                             if coords:
-                                sprite = self._get_sprite_from(coords, layer)
+                                sprite = self._get_sprite_from(coords, layer, _img_cache)
                                 self.content2D[xpos_new][ypos_new] = sprite
 
                     # print "len content2D:", len(self.content2D)
@@ -201,6 +203,11 @@ class RendererPygame(object):
                     self.tile_height = new_tileheight
                     self.num_tiles_x = new_width
                     self.num_tiles_y = new_height
+                    
+            # if __debug__: 
+                # num_tiles = self.num_tiles_x * self.num_tiles_y
+                # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
+
 
         @staticmethod
         def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, num_tiles_x, num_tiles_y):
@@ -217,9 +224,10 @@ class RendererPygame(object):
             # print xpos_new, ypos_new, xpos, ypos, num_tiles_x, num_tiles_y, len(coords), coords
             return coords
 
-        def _get_sprite_from(self, coords, layer):
+        def _get_sprite_from(self, coords, layer, _img_cache):
             # if __debug__: print "get sprite from"
             sprites = []
+            key = []
             for xpos, ypos in coords:
                 if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
                     # print "CONTINUE", xpos, ypos
@@ -232,25 +240,32 @@ class RendererPygame(object):
                     w, h = img.get_size()
                     rect = pygame.Rect(world_x, world_y, w, h)
                     sprites.append(RendererPygame.Sprite(img, rect))
+                    key.append(idx)
             if sprites:
                 # dont copy to a new image if only one sprite is in sprites (reduce memory usage)
                 if len(sprites) == 1:
                     return sprites[0]
                 # combine found sprites into one sprite
                 rect = sprites[0].rect.unionall(sprites)
-                image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
-                image.fill((0, 0, 0, 0))
-                x, y = rect.topleft
-                for spr in sprites:
-                    image.blit(spr.image, spr.rect.move(-x, -y))
 
-                # if __debug__:
-                    # draw red border for debugging
-                    # pygame.draw.rect(image, (255, 0, 0), rect.move(-x, -y), 1)
+                # cache the images to save memory
+                key = tuple(key)
+                if key in _img_cache:
+                    image = _img_cache[key]
+                else:
+                    image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
+                    image.fill((0, 0, 0, 0))
+                    x, y = rect.topleft
+                    for spr in sprites:
+                        image.blit(spr.image, spr.rect.move(-x, -y))
+                    _img_cache[key] = image
+
+                    if __debug__:
+                        # draw red border for debugging
+                        pygame.draw.rect(image, (255, 0, 0), rect.move(-x, -y), 1)
 
                 del sprites
                 return RendererPygame.Sprite(image, rect)
-
             return None
 
     def __init__(self, resource_loader):
@@ -301,10 +316,10 @@ class RendererPygame(object):
         return False
 
     def set_camera_position(self, world_pos_x, world_pos_y, width, height, margin=0):
-        self._cam_world_pos_x = int(world_pos_x)
-        self._cam_world_pos_y = int(world_pos_y)
         self._cam_width = width
         self._cam_height = height
+        self._cam_world_pos_x = int(world_pos_x) - width / 2 # TODO: use // from future
+        self._cam_world_pos_y = int(world_pos_y) - height / 2
         self._margin = margin + 1
 
     def get_collapse_level(self, layer):
@@ -336,10 +351,10 @@ class RendererPygame(object):
             cam_world_pos_y = self._cam_world_pos_y * layer.paralax_factor_y + world_layer.y
 
             # camera bounds, restricting number of tiles to draw
-            left = int(round(float(cam_world_pos_x) / layer.tile_width)) - self._margin
-            right = int(round(float(cam_world_pos_x + self._cam_width) / layer.tile_width)) + self._margin + 1
-            top = int(round(float(cam_world_pos_y) / tile_h)) - self._margin
-            bottom = int(round(float(cam_world_pos_y + self._cam_height) / tile_h)) + self._margin + 1
+            left = int(round(float(cam_world_pos_x) // layer.tile_width)) - self._margin
+            right = int(round(float(cam_world_pos_x + self._cam_width) // layer.tile_width)) + self._margin + 1
+            top = int(round(float(cam_world_pos_y) // tile_h)) - self._margin
+            bottom = int(round(float(cam_world_pos_y + self._cam_height) // tile_h)) + self._margin + 1
 
             left = left if left > 0 else 0
             right = right if right < layer.num_tiles_x else layer.num_tiles_x
@@ -572,13 +587,11 @@ def demo_pygame(file_name):
                     else:
                         print "layer", idx, " does not exist on this map!"
                 elif event.key == pygame.K_UP:
-                    print '?', pressed_layer
                     if pressed_layer is not None:
                         layer = world_map.layers[pressed_layer]
                         renderer.set_layer_paralax_factor(layer, renderer.get_layer_paralax_factor_x(layer) + 0.1)
                         print "increase paralax factox on layer", pressed_layer, " to:", renderer.get_layer_paralax_factor_x(layer)
                 elif event.key == pygame.K_DOWN:
-                    print '??', pressed_layer
                     if pressed_layer is not None:
                         layer = world_map.layers[pressed_layer]
                         renderer.set_layer_paralax_factor(layer, renderer.get_layer_paralax_factor_x(layer) - 0.1)
@@ -617,8 +630,8 @@ def demo_pygame(file_name):
         # my_sprites[0].rect.center = cam_world_pos_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_world_pos_y + i * 3 + screen_height // 2
         my_sprites[0].is_flat = hero_flat
         my_sprites[-1].is_flat = hero_flat
-        my_sprites[0].rect.center = cam_world_pos_x + screen_width // 2 , cam_world_pos_y + screen_height // 2
-        my_sprites[-1].rect.center = cam_world_pos_x + screen_width // 2 + 20 , cam_world_pos_y + screen_height // 2
+        my_sprites[0].rect.center = cam_world_pos_x , cam_world_pos_y
+        my_sprites[-1].rect.center = cam_world_pos_x + 20 , cam_world_pos_y
 
         # adjust camera according the keypresses
         renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y, screen_width, screen_height, 3)
