@@ -269,15 +269,18 @@ class RendererPygame(object):
 
 
     def add_sprite(self, layer, sprite):
+        # TODO: move that into the layer class
         if layer not in self._layer_sprites:
             self._layer_sprites[layer] = []
         self._layer_sprites[layer].append(sprite)
 
     def add_sprites(self, layer, sprites):
+        # TODO: move that into the layer class
         for sprite in sprites:
             self.add_sprite(layer, sprite)
 
     def remove_sprite(self, layer, sprite):
+        # TODO: move that into the layer class
         sprites = self._layer_sprites.get(layer)
         if sprites is not None and sprite in sprites:
             sprites.remove(sprite)
@@ -285,10 +288,12 @@ class RendererPygame(object):
                 del self._layer_sprites[layer]
 
     def remove_sprites(self, layer, sprites):
+        # TODO: move that into the layer class
         for sprite in sprites:
             self.remove_sprite(layer, sprite)
 
     def contains_sprite(self, layer, sprite):
+        # TODO: move that into the layer class
         sprites = self._layer_sprites.get(layer)
         if sprites is not None:
             if sprite in sprites:
@@ -303,9 +308,11 @@ class RendererPygame(object):
         self._margin = margin + 1
 
     def get_collapse_level(self, layer):
+        # TODO: move that into the layer class
         return self._layers[layer].level
 
     def set_collapse_level(self, layer, level):
+        # TODO: move that into the layer class
         level = max(1, level)
         self._layers[layer].collapse(level)
 
@@ -378,7 +385,7 @@ class RendererPygame(object):
                         surf_blit(tile_sprite.image, tile_sprite.rect.move( - cam_world_pos_x,  -cam_world_pos_y), tile_sprite.source_rect, tile_sprite.flags)
 
     def set_layer_paralax_factor(self, world_layer, factor_x, factor_y=None, center_x=0, center_y=0):
-    
+        # TODO: move that into the layer class
         layer = self._layers[world_layer]
         layer.paralax_factor_x = factor_x
         if factor_y:
@@ -389,9 +396,11 @@ class RendererPygame(object):
         layer.paralax_center_y = center_y
         
     def get_layer_paralax_factor_x(self, world_layer):
+        # TODO: move that into the layer class
         return self._layers[world_layer].paralax_factor_x
 
     def get_layer_paralax_factor_y(self, world_layer):
+        # TODO: move that into the layer class
         return self._layers[world_layer].paralax_factor_y
 
 
