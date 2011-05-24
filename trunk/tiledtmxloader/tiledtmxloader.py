@@ -158,6 +158,8 @@ class TileMap(object):
         layer.height = int(layer.height)
         layer.pixel_width = layer.width * self.tilewidth
         layer.pixel_height = layer.height * self.tileheight
+        layer.tilewidth = self.tilewidth
+        layer.tileheight = self.tileheight
         layer.visible = bool(int(layer.visible))
 
     def _convert_obj_group(self, obj_group):
