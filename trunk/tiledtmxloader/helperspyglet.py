@@ -76,9 +76,9 @@ class ResourceLoaderPyglet(tiledtmxloader.AbstractResourceLoader):
         source_img = self._load_image(filename, colorkey)
         images = []
         # Reverse the map column reading to compensate for pyglet's y-origin.
-        for y in xrange(source_img.height - tile_height, margin - tile_height,
+        for y in range(source_img.height - tile_height, margin - tile_height,
             -tile_height - spacing):
-            for x in xrange(margin, source_img.width, tile_width + spacing):
+            for x in range(margin, source_img.width, tile_width + spacing):
                 img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
                 images.append(img_part)
         return images
@@ -115,11 +115,13 @@ def demo_pyglet(file_name):
 
     world_map = tiledtmxloader.TileMapParser().parse_decode(file_name)
     # delta is the x/y position of the map view.
-    # delta is a list because it can be accessed from the on_draw function.
-    # This list can be used within the update method.
-    delta = [0.0, 0.0]
-    frames_per_sec = 1.0 / 60.0
-    window = pyglet.window.Window(640, 480)
+    # delta is a list so that it can be accessed from the on_draw method of
+    # window and the update function. Note that the position is in integers to
+    # match Pyglet Sprites. Using floating-point numbers causes graphical
+    # problems. See http://groups.google.com/group/pyglet-users/browse_thread/thread/52f9ae1ef7b0c8fa?pli=1
+    delta = [0, 0]
+    frames_per_sec = 1.0 / 30.0
+    window = pyglet.window.Window()
 
     @window.event
     def on_draw():
@@ -152,8 +154,8 @@ def demo_pyglet(file_name):
         # When left Shift is held, the speed increases.
         # The speed interpolates based on time passed, so the demo navigates
         # at a reasonable pace even on huge maps.
-        speed = (3.0 + keys[pyglet.window.key.LSHIFT] * 6.0) * \
-                (dt / frames_per_sec)
+        speed = (3 + keys[pyglet.window.key.LSHIFT] * 6) * \
+                int(dt / frames_per_sec)
         if keys[pyglet.window.key.LEFT]:
             delta[0] += speed
         if keys[pyglet.window.key.RIGHT]:
@@ -175,12 +177,11 @@ def demo_pyglet(file_name):
             # I hope to have a separate demo using objects as well.
             continue
         group = pyglet.graphics.OrderedGroup(group_num)
-        for ytile in xrange(layer.height):
+        for ytile in range(layer.height):
             # To compensate for pyglet's upside-down y-axis, the Sprites are
             # placed in rows that are backwards compared to what was loaded
             # into the map. The next operation puts all rows upside-down.
-            for xtile in xrange(layer.width):
-                #layer.content2D[xtile].reverse()
+            for xtile in range(layer.width):
                 image_id = layer.content2D[xtile][ytile]
                 if image_id:
                     # o_x and o_y are offsets. They are not helpful here.
