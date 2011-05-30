@@ -703,15 +703,15 @@ class TileMapParser(object):
         Parses the given map. Does no decoding nor loading the data.
         :return: instance of TileMap
         """
-        # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
+        # would be more elegant to use  "with open(file_name, "rb") as tmx_file:" but that is python 2.6
         self.map_file_name = os.path.abspath(file_name)
-        file = None
+        tmx_file = None
         try:
-            file = open(self.map_file_name, "rb")
-            dom = minidom.parseString(file.read())
+            tmx_file = open(self.map_file_name, "rb")
+            dom = minidom.parseString(tmx_file.read())
         finally:
-            if file:
-                file.close()
+            if tmx_file:
+                tmx_file.close()
         for node in self._get_nodes(dom.childNodes, 'map'):
             world_map = self._build_world_map(node)
             break
