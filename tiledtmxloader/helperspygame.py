@@ -192,8 +192,15 @@ class RendererPygame(object):
 
                     new_tilewidth = self.world_map.tilewidth * level
                     new_tileheight = self.world_map.tileheight * level
-                    new_width = int(self.world_map.width / level + 0.5)
-                    new_height = int(self.world_map.height / level + 0.5)
+## BUG: 0.5 allows cases where new_width or new_height are smaller than
+## original. This caused the bottom and right edge tiles to be lost in some
+## cases. - Gumm
+##                    new_width = int(self.world_map.width / level + 0.5)
+##                    new_height = int(self.world_map.height / level + 0.5)
+                    new_width = int(self.world_map.width / level)
+                    new_height = int(self.world_map.height / level)
+                    if new_width * level < self.world_map.width: new_width += 1
+                    if new_height * level < self.world_map.height: new_height += 1
 
                     # print "old size", self.world_map.width, self.world_map.height
                     # print "new size", new_width, new_height
@@ -273,7 +280,11 @@ class RendererPygame(object):
 
                 # cache the images to save memory
                 key = tuple(key)
-                if key in _img_cache:
+## BUG: Temporarily disabling cache. This allows cases where the resulting
+## image differs from the original tiles. It is possibly due to a malformed key,
+## causing later tile groups to match inappropriately. - Gumm
+##                if key in _img_cache:
+                if False:
                     image = _img_cache[key]
                 else:
                     image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
