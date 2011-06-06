@@ -186,6 +186,7 @@ class RendererPygame(object):
 
             if level != self._level:
                 self._level = level
+                self._sprite_cache_hits = 0
 
                 layer = self.world_map.layers[self._layer_id]
                 if not layer.is_object_group:
@@ -229,10 +230,12 @@ class RendererPygame(object):
                     self.num_tiles_x = new_width
                     self.num_tiles_y = new_height
                     
-            # if __debug__: 
+            if __debug__: 
                 # num_tiles = self.num_tiles_x * self.num_tiles_y
                 # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
-
+                print '%s: Sprite Cache hits: %d' % (
+                    self.__class__.__name__, self._sprite_cache_hits
+                )
 
         @staticmethod
         def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, num_tiles_x, num_tiles_y):
@@ -253,6 +256,7 @@ class RendererPygame(object):
             # if __debug__: print "get sprite from"
             sprites = []
             key = []
+            cx,cy = coords[0]
             for xpos, ypos in coords:
                 if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
                     # print "CONTINUE", xpos, ypos
@@ -270,7 +274,21 @@ class RendererPygame(object):
                         rect = pygame.Rect(world_x, world_y, w, h)
                         sprite = RendererPygame.Sprite(img, rect)
                     sprites.append(sprite)
-                    key.append(idx)
+## BUG: Keeping idx only when it does not equal None produces identical keys in
+## some tiles configurations that differ. Keeping idx when it is None fixes this
+## issue. The slightly more elaborate removal of trailing None values enables a
+## case where edge tiles could benefit from additional cache hits. - Gumm
+##                    key.append(idx)
+                key.append((xpos-cx,ypos-cy,idx))
+                key.reverse()
+                more = True
+                while more:
+                    if key[0][2] is None:
+                        key.pop(0)
+                    else:
+                        more = False
+                key.reverse()
+                
             if sprites:
                 # dont copy to a new image if only one sprite is in sprites (reduce memory usage)
                 if len(sprites) == 1:
@@ -280,12 +298,9 @@ class RendererPygame(object):
 
                 # cache the images to save memory
                 key = tuple(key)
-## BUG: Temporarily disabling cache. This allows cases where the resulting
-## image differs from the original tiles. It is possibly due to a malformed key,
-## causing later tile groups to match inappropriately. - Gumm
-##                if key in _img_cache:
-                if False:
+                if key in _img_cache:
                     image = _img_cache[key]
+                    self._sprite_cache_hits += 1
                 else:
                     image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
                     image.fill((0, 0, 0, 0))
