@@ -1,0 +1,35 @@
+
+
+
+
+Notes:
+
+helperspygame.py
+
+    class ResourceLoaderPygame:
+        implement new feature to support flipped tiles (newer versions of tiled support that)
+
+    class Sprite: 
+        will stay the same (more or less)
+    class Layer: 
+        will be a public class
+
+    Layer.merge([layers]) -> Layer  
+        layers is a list of the layers that should be merged into one layer, not sure yet what this list contains
+    Layer.scale(Layer, factor) -> Layer 
+        should be pretty straight forward
+    Layer.collapse(Layer, level) -> Layer 
+        collapses the layer
+
+    class RendererPygame: 
+        will probably be removed and replaces with a camera class since 
+        there isn't more to it than cam set_camera_position() and render_layer()
+        
+    class Camera:
+        the new mentioned camera class
+        
+
+    maybe introduce a global image cache
+
+
+
