@@ -1,6 +1,6 @@
 
 
-
+make the camera values use a rect!
 
 Notes:
 
