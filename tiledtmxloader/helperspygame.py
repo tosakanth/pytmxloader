@@ -144,7 +144,7 @@ class SpriteLayer(object):
         self.position_y = _layer.y
 
 
-        self._level = -1 # start with an invalid level
+        self._level = 1 # start with an invalid level
         
         self.paralax_factor_x = 1.0
         self.paralax_factor_y = 1.0
@@ -179,18 +179,51 @@ class SpriteLayer(object):
             )
 
 
+    def get_collapse_level(self):
+        return self._level
+
     # TODO: implement scale
     @staticmethod
-    def scale(layer, scale): # -> sprite_layer
-        raise NotImplementedError
+    def scale(orig_layer, scale_w, scale_h): # -> sprite_layer
+        """
+        Scales a layer and returns it.
+        
+        scale_w, scale_h: float (0, ...]
+        """
+        layer = SpriteLayer(orig_layer.layer_idx, orig_layer._resource_loader)
+        
+        layer.tilewidth = layer_orig.tilewidth * scale_w
+        layer.tileheight = layer_orig.tileheight * scale_h
+        layer.num_tiles_x = layer_orig.width * scale_w
+        layer.num_tiles_y = layer_orig.height * scale_h
+        layer.position_x = layer_orig.position_x
+        layer.position_y = layer_orig.position_y
+
+
+        layer._level = layer_orig._level
+        
+        layer.paralax_factor_x = layer_orig.paralax_factor_x
+        layer.paralax_factor_y = layer_orig.paralax_factor_y
+        layer.sprites = layer_orig.sprites
+        layer.is_object_group = layer_orig.is_object_group
+        layer.visible = layer_orig.visible
+        
+        for xidx, col in enumerate(layer_orig.content2D):
+            for yidx, sprite in enumerate(col):
+                w, h = sprite.image.get_size()
+                new_w = w * scale_w
+                new_h = h * scale_h
+                image = pygame.transform.smoothscale(sprite.image, (new_w, new_h))
+                x, y = sprite.rect.topleft
+                rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
+                layer.content2D[xidx][yidx] = SpriteLayer.Sprite(image, rect)
+                
+        return layer
 
     # TODO: implement merge
     @staticmethod
     def merge(layers): # -> sprite_layer
         raise NotImplementedError
-
-    def get_collapse_level(self):
-        return self._level
 
     @staticmethod
     def uncollapse(layer):
@@ -198,6 +231,7 @@ class SpriteLayer(object):
     
     @staticmethod
     # TODO: change signature: collapse(world_or_sprite_layer, level) -> sprite_layer
+    # TODO: level is needed! not sure how to do a uncollapse (caching is not possible!)
     def collapse(layer):
 
         #   +    0'        1'        2'
@@ -221,7 +255,6 @@ class SpriteLayer(object):
         level = 2
         if layer.is_object_group:
             return layer
-            
             
 
         new_tilewidth = layer.tilewidth * level
@@ -267,6 +300,9 @@ class SpriteLayer(object):
         layer.num_tiles_y = new_height
         layer.content2D = _content2D
 
+        # HACK:
+        layer._level *= 2
+            
         # if __debug__ and level > 1: 
             # # num_tiles = self.num_tiles_x * self.num_tiles_y
             # # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
@@ -349,8 +385,11 @@ class SpriteLayer(object):
                 _img_cache[key] = image
 
                 if __debug__:
+                    import random
+                    # randi = random.randint
                     # draw red border for debugging
-                    pygame.draw.rect(image, (255, 0, 0), rect.move(-x, -y), 1)
+                    # pygame.draw.rect(image, (randi(0,255), randi(0, 255), randi(0, 255)), rect.move(-x, -y), 1)
+                    pygame.draw.rect(image, (255, 0, 0), rect.move(-x, -y), layer.get_collapse_level())
 
             del sprites
             return SpriteLayer.Sprite(image, rect)
@@ -643,8 +682,10 @@ def demo_pygame(file_name):
                             # TODO: better interface
                             render_layer = sprite_layers[idx]
                             # render_layer.collapse(render_layer.get_collapse_level() + 1)
-                            SpriteLayer.uncollapse(render_layer)
-                            print "layer has collapseed, level:", render_layer.get_collapse_level()
+                            # SpriteLayer.uncollapse(render_layer)
+                            # print "layer has collapseed, level:", render_layer.get_collapse_level()
+                            sprite_layers[idx] = renderer.get_layer_at_index(idx)
+                            print "layer", idx, "RESET!"
                         elif event.mod & pygame.KMOD_ALT:
                             # hero sprites
                             # TODO: better interface
