@@ -338,7 +338,8 @@ class SpriteLayer(object):
             if idx:
                 if isinstance(idx, SpriteLayer.Sprite):
                     sprite = idx
-                    idx = sprite.image
+## Issue 13 fix. - Gumm
+##                    idx = sprite.image
                 else:
                     # raise Exception("should not used anymore since all SpriteLayers contain sprites")
                     offx, offy, img = indexed_tiles[idx]
