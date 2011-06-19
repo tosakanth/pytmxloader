@@ -162,21 +162,19 @@ class SpriteLayer(object):
         # print "tile dim:", new_tilewidth, new_tileheight, _world_map.tilewidth, _world_map.tileheight
 
         # fill them
-        self._sprite_cache_hits = 0
         _img_cache = {}
+        _img_cache["hits"] = 0
         for ypos_new in xrange(0, self.num_tiles_y):
             for xpos_new in xrange(0, self.num_tiles_x):
                 coords = self._get_list_of_neighbour_coord(xpos_new, ypos_new, 1, self.num_tiles_x, self.num_tiles_y)
                 if coords:
                     sprite = self._get_sprite_from(coords, _layer, _img_cache, self._resource_loader.indexed_tiles)
                     self.content2D[xpos_new][ypos_new] = sprite
-        del _img_cache
         if __debug__: 
             # num_tiles = self.num_tiles_x * self.num_tiles_y
             # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
-            print '%s: Sprite Cache hits: %d' % (
-                self.__class__.__name__, self._sprite_cache_hits
-            )
+            print '%s: Sprite Cache hits: %d' % (self.__class__.__name__, _img_cache["hits"])
+        del _img_cache
 
 
     def get_collapse_level(self):
@@ -256,14 +254,8 @@ class SpriteLayer(object):
         if layer.is_object_group:
             return layer
             
-
         new_tilewidth = layer.tilewidth * level
         new_tileheight = layer.tileheight * level
-## BUG: 0.5 allows cases where new_width or new_height are smaller than
-## original. This caused the bottom and right edge tiles to be lost in some
-## cases. - Gumm
-##                    new_width = int(layer.width / level + 0.5)
-##                    new_height = int(layer.height / level + 0.5)
         new_width = int(layer.num_tiles_x / level)
         new_height = int(layer.num_tiles_y / level)
         if new_width * level < layer.num_tiles_x:
@@ -273,7 +265,6 @@ class SpriteLayer(object):
 
         # print "old size", layer.num_tiles_x, layer.num_tiles_y
         # print "new size", new_width, new_height
-
         
         _content2D = []
         # generate the needed lists
@@ -284,8 +275,8 @@ class SpriteLayer(object):
         # print "tile dim:", new_tilewidth, new_tileheight, layer.tilewidth, layer.tileheight
 
         # fill them
-        # _sprite_cache_hits = 0
         _img_cache = {}
+        _img_cache["hits"] = 0
         for ypos_new in xrange(0, new_height):
             for xpos_new in xrange(0, new_width):
                 coords = SpriteLayer._get_list_of_neighbour_coord(xpos_new, ypos_new, level, layer.num_tiles_x, layer.num_tiles_y)
@@ -303,10 +294,10 @@ class SpriteLayer(object):
         # HACK:
         layer._level *= 2
             
-        # if __debug__ and level > 1: 
+        if __debug__ and level > 1: 
             # # num_tiles = self.num_tiles_x * self.num_tiles_y
             # # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
-            # print '%s: Sprite Cache hits: %d' % (_sprite_cache_hits)
+            print '%s: Sprite Cache hits: %d' % ("collapse", _img_cache["hits"])
 
     @staticmethod
     def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, num_tiles_x, num_tiles_y):
@@ -328,18 +319,18 @@ class SpriteLayer(object):
         # if __debug__: print "get sprite from"
         sprites = []
         key = []
-        cx,cy = coords[0]
+        # cx,cy = coords[0]
         for xpos, ypos in coords:
             if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
                 # print "CONTINUE", xpos, ypos
-                key.append(None) # border and corner cases!
+                key.append(-1) # border and corner cases!
                 continue
             idx = layer.content2D[xpos][ypos]
             if idx:
                 if isinstance(idx, SpriteLayer.Sprite):
                     sprite = idx
-## Issue 13 fix. - Gumm
-##                    idx = sprite.image
+                    # idx = sprite.image
+                    key.append(sprite.key)
                 else:
                     # raise Exception("should not used anymore since all SpriteLayers contain sprites")
                     offx, offy, img = indexed_tiles[idx]
@@ -348,41 +339,36 @@ class SpriteLayer(object):
                     w, h = img.get_size()
                     rect = pygame.Rect(world_x, world_y, w, h)
                     sprite = SpriteLayer.Sprite(img, rect)
+                    sprite.key = idx
+                    key.append(idx)
                 sprites.append(sprite)
-## BUG: Keeping idx only when it does not equal None produces identical keys in
-## some tiles configurations that differ. Keeping idx when it is None fixes this
-## issue. The slightly more elaborate removal of trailing None values enables a
-## case where edge tiles could benefit from additional cache hits. - Gumm
-##                    key.append(idx)
-            # key.append((xpos-cx,ypos-cy,idx))
-            key.append(idx)
-            # key.reverse()
-            # more = True
-            # while more:
-                # if key[0][2] is None:
-                    # key.pop(0)
-                # else:
-                    # more = False
-            # key.reverse()
+            else:
+                key.append(-1)
             
         if sprites:
+            key = tuple(key)
+            
             # dont copy to a new image if only one sprite is in sprites (reduce memory usage)
             if len(sprites) == 1:
-                return sprites[0]
+                sprite = sprites[0]
+                sprite.key = key
+                return sprite
+                
             # combine found sprites into one sprite
             rect = sprites[0].rect.unionall(sprites)
 
             # cache the images to save memory
-            key = tuple(key)
             if key in _img_cache:
                 image = _img_cache[key]
-                # self._sprite_cache_hits += 1
+                _img_cache["hits"] = _img_cache["hits"] + 1
             else:
+                # make new image
                 image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
                 image.fill((0, 0, 0, 0))
                 x, y = rect.topleft
                 for spr in sprites:
                     image.blit(spr.image, spr.rect.move(-x, -y))
+                    
                 _img_cache[key] = image
 
                 if __debug__:
@@ -393,7 +379,10 @@ class SpriteLayer(object):
                     pygame.draw.rect(image, (255, 0, 0), rect.move(-x, -y), layer.get_collapse_level())
 
             del sprites
-            return SpriteLayer.Sprite(image, rect)
+            sprite = SpriteLayer.Sprite(image, rect)
+            sprite.key = key
+            return sprite
+            
         return None
 
     def add_sprite(self, sprite):
