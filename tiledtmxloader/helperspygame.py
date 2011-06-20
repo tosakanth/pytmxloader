@@ -115,7 +115,7 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
 class SpriteLayer(object):
 
     class Sprite(object):
-        def __init__(self, image, rect, source_rect=None, flags=0):
+        def __init__(self, image, rect, source_rect=None, flags=0, key=None):
             self.image = image
             # TODO: dont use a rect for position
             self.rect = rect # blit rect
@@ -123,6 +123,7 @@ class SpriteLayer(object):
             self.flags = flags
             self.is_flat = False
             self.z = 0
+            self.key = key
             
         def get_draw_cond(self):
             if self.is_flat:
@@ -168,7 +169,12 @@ class SpriteLayer(object):
             for xpos_new in xrange(0, self.num_tiles_x):
                 coords = self._get_list_of_neighbour_coord(xpos_new, ypos_new, 1, self.num_tiles_x, self.num_tiles_y)
                 if coords:
-                    sprite = self._get_sprite_from(coords, _layer, _img_cache, self._resource_loader.indexed_tiles)
+                    key, sprites = SpriteLayer._get_sprites_fromt_tiled_layer(coords, _layer, self._resource_loader.indexed_tiles)
+
+                    sprite = None
+                    if sprites:
+                        sprite = SpriteLayer._union_sprites(sprites, key, _img_cache)
+                        
                     self.content2D[xpos_new][ypos_new] = sprite
         if __debug__: 
             # num_tiles = self.num_tiles_x * self.num_tiles_y
@@ -315,37 +321,7 @@ class SpriteLayer(object):
         return coords
 
     @staticmethod
-    def _get_sprite_from(coords, layer, _img_cache, indexed_tiles=None):
-        # if __debug__: print "get sprite from"
-        sprites = []
-        key = []
-        # cx,cy = coords[0]
-        for xpos, ypos in coords:
-            if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
-                # print "CONTINUE", xpos, ypos
-                key.append(-1) # border and corner cases!
-                continue
-            idx = layer.content2D[xpos][ypos]
-            if idx:
-                if isinstance(idx, SpriteLayer.Sprite):
-                    sprite = idx
-                    # idx = sprite.image
-                    key.append(sprite.key)
-                else:
-                    # raise Exception("should not used anymore since all SpriteLayers contain sprites")
-                    offx, offy, img = indexed_tiles[idx]
-                    world_x = xpos * layer.tilewidth + offx
-                    world_y = ypos * layer.tileheight + offy
-                    w, h = img.get_size()
-                    rect = pygame.Rect(world_x, world_y, w, h)
-                    sprite = SpriteLayer.Sprite(img, rect)
-                    sprite.key = idx
-                    key.append(idx)
-                sprites.append(sprite)
-            else:
-                key.append(-1)
-            
-        if sprites:
+    def _union_sprites(sprites, key, _img_cache):
             key = tuple(key)
             
             # dont copy to a new image if only one sprite is in sprites (reduce memory usage)
@@ -371,16 +347,56 @@ class SpriteLayer(object):
                     
                 _img_cache[key] = image
 
-                if __debug__:
-                    import random
-                    # randi = random.randint
-                    # draw red border for debugging
-                    # pygame.draw.rect(image, (randi(0,255), randi(0, 255), randi(0, 255)), rect.move(-x, -y), 1)
-                    pygame.draw.rect(image, (255, 0, 0), rect.move(-x, -y), layer.get_collapse_level())
+            return SpriteLayer.Sprite(image, rect, key=key)
 
+    @staticmethod
+    def _get_sprites_fromt_tiled_layer(coords, layer, indexed_tiles):
+        sprites = []
+        key = []
+        for xpos, ypos in coords:
+            if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
+                # print "CONTINUE", xpos, ypos
+                key.append(-1) # border and corner cases!
+                continue
+            idx = layer.content2D[xpos][ypos]
+            if idx:
+                offx, offy, img = indexed_tiles[idx]
+                world_x = xpos * layer.tilewidth + offx
+                world_y = ypos * layer.tileheight + offy
+                w, h = img.get_size()
+                rect = pygame.Rect(world_x, world_y, w, h)
+                sprite = SpriteLayer.Sprite(img, rect, key=idx)
+                key.append(idx)
+                sprites.append(sprite)
+            else:
+                key.append(-1)
+        return key, sprites
+
+    @staticmethod
+    def _get_sprite_from(coords, layer, _img_cache, indexed_tiles=None):
+        sprites = []
+        key = []
+        for xpos, ypos in coords:
+            if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
+                # print "CONTINUE", xpos, ypos
+                key.append(-1) # border and corner cases!
+                continue
+            idx = layer.content2D[xpos][ypos]
+            if idx:
+                sprite = idx
+                key.append(sprite.key)
+                sprites.append(sprite)
+            else:
+                key.append(-1)
+        
+        if sprites:
+            sprite = SpriteLayer._union_sprites(sprites, key, _img_cache)
+            
+            if __debug__:
+                x, y = sprite.rect.topleft
+                pygame.draw.rect(sprite.image, (255, 0, 0), sprite.rect.move(-x, -y), layer.get_collapse_level())
+                
             del sprites
-            sprite = SpriteLayer.Sprite(image, rect)
-            sprite.key = key
             return sprite
             
         return None
