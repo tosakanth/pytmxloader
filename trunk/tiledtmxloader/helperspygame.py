@@ -9,7 +9,8 @@ It loads the \*.tmx files produced by Tiled.
 
 """
 
-# Versioning scheme based on: http://en.wikipedia.org/wiki/Versioning#Designating_development_stage
+# Versioning scheme based on: 
+# http://en.wikipedia.org/wiki/Versioning#Designating_development_stage
 #
 #   +-- api change, probably incompatible with older versions
 #   |     +-- enhancements but no api change
@@ -57,27 +58,39 @@ import tiledtmxloader
 #  -----------------------------------------------------------------------------
 
 class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
+    """
+    Resource loader for pygame. Loads the images as Surfaces and saves them in
+    the variable indexed_tiles.
+    """
 
     def __init__(self):
         tiledtmxloader.AbstractResourceLoader.__init__(self)
 
-    def _load_image_parts(self, filename, margin, spacing, tile_width, tile_height, colorkey=None): #-> [images]
+    def _load_image_parts(self, filename, margin, spacing, \
+                          tile_width, tile_height, colorkey=None): #-> [images]
         source_img = self._load_image(filename, colorkey)
-        w, h = source_img.get_size()
+        width, height = source_img.get_size()
         images = []
-        for y in xrange(margin, h, tile_height + spacing):
-            for x in xrange(margin, w, tile_width + spacing):
-                img_part = self._load_image_part(filename, x, y, tile_width, tile_height, colorkey)
+        for ypos in xrange(margin, height, tile_height + spacing):
+            for xpos in xrange(margin, width, tile_width + spacing):
+                img_part = self._load_image_part(filename, xpos, ypos, \
+                                            tile_width, tile_height, colorkey)
                 images.append(img_part)
         return images
 
-    def _load_image_part(self, filename, x, y, w, h, colorkey=None):
+    def _load_image_part(self, filename, xpos, ypos, width, height, \
+                                                                colorkey=None):
+        """
+        Loads a image from a sprite sheet.
+        """
         source_img = self._load_image(filename, colorkey)
         ## ISSUE 4:
-        ##      The following usage seems to be broken in pygame (1.9.1.):
-        ##      img_part = pygame.Surface((tile_width, tile_height), 0, source_img)
-        img_part = pygame.Surface((w, h), source_img.get_flags(), source_img.get_bitsize())
-        source_rect = pygame.Rect(x, y, w, h)
+        ##  The following usage seems to be broken in pygame (1.9.1.):
+        ##  img_part = pygame.Surface((tile_width, tile_height), 0, source_img)
+        img_part = pygame.Surface((width, height), \
+                                    source_img.get_flags(), \
+                                    source_img.get_bitsize())
+        source_rect = pygame.Rect(xpos, ypos, width, height)
 
         ## ISSUE 8:
         ## Set the colorkey BEFORE we blit the source_img
@@ -103,8 +116,8 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
             img.set_colorkey(colorkey, pygame.RLEACCEL)
         return img
 
-    def get_sprites(self):
-        pass
+    # def get_sprites(self):
+        # pass
 
 
 
@@ -154,47 +167,50 @@ class SpriteLayer(object):
         self.visible = _layer.visible
         
         # init data to default
-        self.content2D = []
+        # self.content2D = []
         # generate the needed lists
-        for xpos in xrange(self.num_tiles_x):
-            self.content2D.append([None] * self.num_tiles_y)
-
-        # print "len content2D:", len(self.content2D), new_width, new_height, _world_map.width, _world_map.height, level
-        # print "tile dim:", new_tilewidth, new_tileheight, _world_map.tilewidth, _world_map.tileheight
+        # for xpos in xrange(self.num_tiles_x):
+            # self.content2D.append([None] * self.num_tiles_y)
+            
+        self.content2D = [None] * self.num_tiles_y
+        for ypos in xrange(self.num_tiles_y):
+            self.content2D[ypos] = [None] * self.num_tiles_x
 
         # fill them
         _img_cache = {}
         _img_cache["hits"] = 0
         for ypos_new in xrange(0, self.num_tiles_y):
             for xpos_new in xrange(0, self.num_tiles_x):
-                coords = self._get_list_of_neighbour_coord(xpos_new, ypos_new, 1, self.num_tiles_x, self.num_tiles_y)
+                coords = self._get_list_of_neighbour_coord(xpos_new, ypos_new, \
+                                        1, self.num_tiles_x, self.num_tiles_y)
                 if coords:
-                    key, sprites = SpriteLayer._get_sprites_fromt_tiled_layer(coords, _layer, self._resource_loader.indexed_tiles)
+                    key, sprites = SpriteLayer._get_sprites_fromt_tiled_layer(\
+                            coords, _layer, self._resource_loader.indexed_tiles)
 
                     sprite = None
                     if sprites:
-                        sprite = SpriteLayer._union_sprites(sprites, key, _img_cache)
+                        sprite = SpriteLayer._union_sprites(sprites, key, \
+                                                                    _img_cache)
                         
-                    self.content2D[xpos_new][ypos_new] = sprite
+                    self.content2D[ypos_new][xpos_new] = sprite
         if __debug__: 
-            # num_tiles = self.num_tiles_x * self.num_tiles_y
-            # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
-            print '%s: Sprite Cache hits: %d' % (self.__class__.__name__, _img_cache["hits"])
+            print '%s: Sprite Cache hits: %d' % \
+                                (self.__class__.__name__, _img_cache["hits"])
         del _img_cache
 
 
     def get_collapse_level(self):
         return self._level
 
-    # TODO: implement scale
+    # TODO: test scale
     @staticmethod
-    def scale(orig_layer, scale_w, scale_h): # -> sprite_layer
+    def scale(layer_orig, scale_w, scale_h): # -> sprite_layer
         """
         Scales a layer and returns it.
         
         scale_w, scale_h: float (0, ...]
         """
-        layer = SpriteLayer(orig_layer.layer_idx, orig_layer._resource_loader)
+        layer = SpriteLayer(layer_orig.layer_idx, layer_orig._resource_loader)
         
         layer.tilewidth = layer_orig.tilewidth * scale_w
         layer.tileheight = layer_orig.tileheight * scale_h
@@ -212,15 +228,16 @@ class SpriteLayer(object):
         layer.is_object_group = layer_orig.is_object_group
         layer.visible = layer_orig.visible
         
-        for xidx, col in enumerate(layer_orig.content2D):
-            for yidx, sprite in enumerate(col):
+        for yidx, row in enumerate(layer_orig.content2D):
+            for xidx, sprite in enumerate(row):
                 w, h = sprite.image.get_size()
                 new_w = w * scale_w
                 new_h = h * scale_h
-                image = pygame.transform.smoothscale(sprite.image, (new_w, new_h))
+                image = pygame.transform.smoothscale(sprite.image, \
+                                                            (new_w, new_h))
                 x, y = sprite.rect.topleft
                 rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
-                layer.content2D[xidx][yidx] = SpriteLayer.Sprite(image, rect)
+                layer.content2D[yidx][xidx] = SpriteLayer.Sprite(image, rect)
                 
         return layer
 
@@ -234,8 +251,6 @@ class SpriteLayer(object):
         print "uncollapse!"
     
     @staticmethod
-    # TODO: change signature: collapse(world_or_sprite_layer, level) -> sprite_layer
-    # TODO: level is needed! not sure how to do a uncollapse (caching is not possible!)
     def collapse(layer):
 
         #   +    0'        1'        2'
@@ -250,12 +265,6 @@ class SpriteLayer(object):
         #        |    |    |    |    |
         #   2' 4 +----+----+----+----+
 
-        # if level < 1:
-            # raise Exception("collapse level has to be > 0, got: " + str(level))
-
-        # if level != self._level:
-            # self._level = level
-            
         level = 2
         if layer.is_object_group:
             return layer
@@ -272,23 +281,24 @@ class SpriteLayer(object):
         # print "old size", layer.num_tiles_x, layer.num_tiles_y
         # print "new size", new_width, new_height
         
-        _content2D = []
+        _content2D = [None] * new_height
         # generate the needed lists
-        for xpos in xrange(new_width):
-            _content2D.append([None] * new_height)
-
-        # print "len content2D:", len(self.content2D), new_width, new_height, layer.width, layer.height, level
-        # print "tile dim:", new_tilewidth, new_tileheight, layer.tilewidth, layer.tileheight
+            
+        for ypos in xrange(new_height):
+            _content2D[ypos] = [None] * new_width
 
         # fill them
         _img_cache = {}
         _img_cache["hits"] = 0
         for ypos_new in xrange(0, new_height):
             for xpos_new in xrange(0, new_width):
-                coords = SpriteLayer._get_list_of_neighbour_coord(xpos_new, ypos_new, level, layer.num_tiles_x, layer.num_tiles_y)
+                coords = SpriteLayer._get_list_of_neighbour_coord(\
+                                        xpos_new, ypos_new, level, \
+                                        layer.num_tiles_x, layer.num_tiles_y)
                 if coords:
-                    sprite = SpriteLayer._get_sprite_from(coords, layer, _img_cache)
-                    _content2D[xpos_new][ypos_new] = sprite
+                    sprite = SpriteLayer._get_sprite_from(coords, layer, \
+                                                                    _img_cache)
+                    _content2D[ypos_new][xpos_new] = sprite
 
         # print "len content2D:", len(self.content2D)
         layer.tilewidth  = new_tilewidth
@@ -301,12 +311,11 @@ class SpriteLayer(object):
         layer._level *= 2
             
         if __debug__ and level > 1: 
-            # # num_tiles = self.num_tiles_x * self.num_tiles_y
-            # # print '?? img_cache efficiency:', (num_tiles - len(_img_cache) + 1.0) / num_tiles
             print '%s: Sprite Cache hits: %d' % ("collapse", _img_cache["hits"])
 
     @staticmethod
-    def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, num_tiles_x, num_tiles_y):
+    def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, \
+                                                    num_tiles_x, num_tiles_y):
         xpos = xpos_new * level
         ypos = ypos_new * level
 
@@ -315,46 +324,45 @@ class SpriteLayer(object):
             for x in xrange(xpos, xpos + level):
                 if x <= num_tiles_x and y <= num_tiles_y:
                     coords.append((x, y))
-                # else:
-                    # print '!', xpos_new, ypos_new, x, y, num_tiles_x, num_tiles_y, len(coords), coords
-        # print xpos_new, ypos_new, xpos, ypos, num_tiles_x, num_tiles_y, len(coords), coords
         return coords
 
     @staticmethod
     def _union_sprites(sprites, key, _img_cache):
-            key = tuple(key)
+        key = tuple(key)
+        
+        # dont copy to a new image if only one sprite is in sprites 
+        # (reduce memory usage)
+        if len(sprites) == 1:
+            sprite = sprites[0]
+            sprite.key = key
+            return sprite
             
-            # dont copy to a new image if only one sprite is in sprites (reduce memory usage)
-            if len(sprites) == 1:
-                sprite = sprites[0]
-                sprite.key = key
-                return sprite
+        # combine found sprites into one sprite
+        rect = sprites[0].rect.unionall(sprites)
+
+        # cache the images to save memory
+        if key in _img_cache:
+            image = _img_cache[key]
+            _img_cache["hits"] = _img_cache["hits"] + 1
+        else:
+            # make new image
+            image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
+            image.fill((0, 0, 0, 0))
+            x, y = rect.topleft
+            for spr in sprites:
+                image.blit(spr.image, spr.rect.move(-x, -y))
                 
-            # combine found sprites into one sprite
-            rect = sprites[0].rect.unionall(sprites)
+            _img_cache[key] = image
 
-            # cache the images to save memory
-            if key in _img_cache:
-                image = _img_cache[key]
-                _img_cache["hits"] = _img_cache["hits"] + 1
-            else:
-                # make new image
-                image = pygame.Surface(rect.size, pygame.SRCALPHA | pygame.RLEACCEL)
-                image.fill((0, 0, 0, 0))
-                x, y = rect.topleft
-                for spr in sprites:
-                    image.blit(spr.image, spr.rect.move(-x, -y))
-                    
-                _img_cache[key] = image
-
-            return SpriteLayer.Sprite(image, rect, key=key)
+        return SpriteLayer.Sprite(image, rect, key=key)
 
     @staticmethod
     def _get_sprites_fromt_tiled_layer(coords, layer, indexed_tiles):
         sprites = []
         key = []
         for xpos, ypos in coords:
-            if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
+            if ypos >= len(layer.content2D) or \
+                                xpos >= len(layer.content2D[ypos]):
                 # print "CONTINUE", xpos, ypos
                 key.append(-1) # border and corner cases!
                 continue
@@ -377,11 +385,12 @@ class SpriteLayer(object):
         sprites = []
         key = []
         for xpos, ypos in coords:
-            if xpos >= len(layer.content2D) or ypos >= len(layer.content2D[xpos]):
+            if ypos >= len(layer.content2D) or \
+                                    xpos >= len(layer.content2D[ypos]):
                 # print "CONTINUE", xpos, ypos
                 key.append(-1) # border and corner cases!
                 continue
-            idx = layer.content2D[xpos][ypos]
+            idx = layer.content2D[ypos][xpos]
             if idx:
                 sprite = idx
                 key.append(sprite.key)
@@ -394,7 +403,9 @@ class SpriteLayer(object):
             
             if __debug__:
                 x, y = sprite.rect.topleft
-                pygame.draw.rect(sprite.image, (255, 0, 0), sprite.rect.move(-x, -y), layer.get_collapse_level())
+                pygame.draw.rect(sprite.image, (255, 0, 0), \
+                                    sprite.rect.move(-x, -y), \
+                                    layer.get_collapse_level())
                 
             del sprites
             return sprite
@@ -440,10 +451,7 @@ class RendererPygame(object):
 
     def __init__(self, resource_loader):
         self._resource_loader = resource_loader
-        self._cam_world_pos_x = 0
-        self._cam_world_pos_y = 0
-        self._cam_width = 10
-        self._cam_height = 10
+        self._cam_rect = pygame.Rect(0, 0, 10, 10)
 
     def get_layers_from_map(self):
         layers = []
@@ -457,16 +465,40 @@ class RendererPygame(object):
             return layer
         return SpriteLayer(layer_idx, self._resource_loader)
 
-
-    def set_camera_position(self, world_pos_x, world_pos_y, width, height, margin=0):
-        # TODO: use a cam rect
-        self._cam_width = width
-        self._cam_height = height
-        self._cam_world_pos_x = int(world_pos_x) - width / 2 # TODO: use // from future
-        self._cam_world_pos_y = int(world_pos_y) - height / 2
+    def set_camera_position(self, world_pos_x, world_pos_y, \
+                                                 alignment='center', margin=0):
+        setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
+        self._margin = margin + 1
+        
+    def set_camera_position_and_size(self, world_pos_x, world_pos_y, \
+                                   width, height, alignment='center', margin=0):
+        self._cam_rect.width = width
+        self._cam_rect.height = height
+        setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
+        self._margin = margin + 1
+        
+    def set_camera_rect(self, cam_rect_world_coord, margin=0):
+        self._cam_rect = cam_rect_world_coord
         self._margin = margin + 1
 
-    def render_layer(self, surf, layer, clip_sprites=True, sort_key=lambda spr: spr.get_draw_cond()):
+    def render_layer(self, surf, layer, clip_sprites=True, \
+                                    sort_key=lambda spr: spr.get_draw_cond()):
+        """
+        Renders a layer onto the given surface.
+        
+        :Parameters:
+            surf : Surface
+                Surface to render onto.
+            layer : SpriteLayer
+                The layer to render. Invisible layers will be skipped.
+            clip_sprites : boolean
+                Clip the sprites of this layer to only draw the ones
+                intersecting the visible part of the world.
+            sort_key : function
+                The sort function for the parameter 'key' of the sort 
+                method of the list.
+        
+        """
         if layer.visible:
 
             if layer.is_object_group:
@@ -480,15 +512,21 @@ class RendererPygame(object):
 
                         # self.paralax_factor_y = 1.0
             # self.paralax_center_x = 0.0
+            cam_rect = self._cam_rect
 
-            cam_world_pos_x = self._cam_world_pos_x * layer.paralax_factor_x + layer.position_x
-            cam_world_pos_y = self._cam_world_pos_y * layer.paralax_factor_y + layer.position_y
+            cam_world_pos_x = cam_rect.x * layer.paralax_factor_x + \
+                                                                layer.position_x
+            cam_world_pos_y = cam_rect.y * layer.paralax_factor_y + \
+                                                                layer.position_y
 
             # camera bounds, restricting number of tiles to draw
-            left = int(round(float(cam_world_pos_x) // layer.tilewidth)) - self._margin
-            right = int(round(float(cam_world_pos_x + self._cam_width) // layer.tilewidth)) + self._margin + 1
+            left = int(round(float(cam_world_pos_x) // layer.tilewidth)) - \
+                                                                self._margin
+            right = int(round(float(cam_world_pos_x + cam_rect.width) // \
+                                            layer.tilewidth)) + self._margin + 1
             top = int(round(float(cam_world_pos_y) // tile_h)) - self._margin
-            bottom = int(round(float(cam_world_pos_y + self._cam_height) // tile_h)) + self._margin + 1
+            bottom = int(round(float(cam_world_pos_y + cam_rect.height) // \
+                                            tile_h)) + self._margin + 1
 
             left = left if left > 0 else 0
             right = right if right < layer.num_tiles_x else layer.num_tiles_x
@@ -503,14 +541,13 @@ class RendererPygame(object):
                 # TODO: make filter visible sprites optional (maybe sorting too)
                 # use a marging around it
                 if clip_sprites:
-                    cam_rect = pygame.Rect(cam_world_pos_x - self._margin, cam_world_pos_y - self._margin, \
-                                            self._cam_width + self._margin, self._cam_height + self._margin)
-                    sprites = [all_sprites[idx] for idx in cam_rect.collidelistall(all_sprites)]
+                    sprites = [all_sprites[idx] \
+                                for idx in cam_rect.collidelistall(all_sprites)]
                 else:
                     sprites = all_sprites
 
+                # could happend that all sprites are not visible by the camera
                 if sprites:
-                    # could happend that all sprites are not visible by the camera
                     if sort_key:
                         sprites.sort(key=sort_key)
                     sprite = sprites[0]
@@ -519,19 +556,28 @@ class RendererPygame(object):
 
             # render
             for ypos in range(top, bottom):
-                # draw sprites in this layer (skip the ones outside visible area/map)
+                # draw sprites in this layer 
+                # (skip the ones outside visible area/map)
                 y = ypos + 1
-                # while spr_idx < len_sprites and sprite.rect.bottom <= y * tile_h:
-                while spr_idx < len_sprites and sprite.get_draw_cond() <= y * tile_h:
-                    surf_blit(sprite.image, sprite.rect.move(-cam_world_pos_x, -cam_world_pos_y - sprite.z), sprite.source_rect, sprite.flags)
+                while spr_idx < len_sprites and sprite.get_draw_cond() <= \
+                                                                    y * tile_h:
+                    surf_blit(sprite.image, \
+                                sprite.rect.move(-cam_world_pos_x, \
+                                                 -cam_world_pos_y - sprite.z),\
+                                sprite.source_rect, \
+                                sprite.flags)
                     spr_idx += 1
                     if spr_idx < len_sprites:
                         sprite = sprites[spr_idx]
                 # next line of the map
                 for xpos in range(left, right):
-                    tile_sprite = layer_content2D[xpos][ypos]
+                    tile_sprite = layer_content2D[ypos][xpos]
                     if tile_sprite:
-                        surf_blit(tile_sprite.image, tile_sprite.rect.move( - cam_world_pos_x,  -cam_world_pos_y), tile_sprite.source_rect, tile_sprite.flags)
+                        surf_blit(tile_sprite.image, \
+                                    tile_sprite.rect.move( - cam_world_pos_x, \
+                                                           -cam_world_pos_y), \
+                                    tile_sprite.source_rect, \
+                                    tile_sprite.flags)
 
 #  -----------------------------------------------------------------------------
 
@@ -562,7 +608,8 @@ class Dude(SpriteLayer.Sprite):
 
 def demo_pygame(file_name):
 
-    # parser the map (it is done here to initialize the window the same size as the map if it is small enough)
+    # parser the map (it is done here to initialize the 
+    # window the same size as the map if it is small enough)
     world_map = tiledtmxloader.TileMapParser().parse_decode(file_name)
 
     # init pygame and set up a screen
@@ -570,7 +617,7 @@ def demo_pygame(file_name):
     pygame.display.set_caption("tiledtmxloader - " + file_name)
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
-    screen = pygame.display.set_mode((screen_width, screen_height), pygame.DOUBLEBUF)
+    screen = pygame.display.set_mode((screen_width, screen_height))
 
     # load the images using pygame
     # image_loader = ImageLoaderPygame()
@@ -618,7 +665,8 @@ def demo_pygame(file_name):
     hero_flat = False
 
     # optimizations
-    num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
+    num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
+                    pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
     pressed_layer = None
     clock_tick = clock.tick
     pygame_event_get = pygame.event.get
@@ -627,6 +675,8 @@ def demo_pygame(file_name):
     renderer_set_camera_position = renderer.set_camera_position
     pygame_display_flip = pygame.display.flip
     sprite_layers = renderer.get_layers_from_map()
+    renderer.set_camera_position_and_size(cam_world_pos_x, cam_world_pos_y, \
+                                        screen_width, screen_height, margin=3)
 
     t = 0
 
@@ -680,22 +730,21 @@ def demo_pygame(file_name):
                             # uncollapse
                             # TODO: better interface
                             render_layer = sprite_layers[idx]
-                            # render_layer.collapse(max(render_layer.get_collapse_level() - 1, 1))
                             SpriteLayer.collapse(render_layer)
-                            print "layer has uncollapsed, level:", render_layer.get_collapse_level()
+                            print "layer has uncollapsed, level:", \
+                                               render_layer.get_collapse_level()
                         elif event.mod & pygame.KMOD_SHIFT:
                             # collapse
                             # TODO: better interface
                             render_layer = sprite_layers[idx]
-                            # render_layer.collapse(render_layer.get_collapse_level() + 1)
-                            # SpriteLayer.uncollapse(render_layer)
-                            # print "layer has collapseed, level:", render_layer.get_collapse_level()
-                            sprite_layers[idx] = renderer.get_layer_at_index(idx)
+                            sprite_layers[idx] = \
+                                                renderer.get_layer_at_index(idx)
                             print "layer", idx, "RESET!"
                         elif event.mod & pygame.KMOD_ALT:
                             # hero sprites
                             # TODO: better interface
-                            if sprite_layers[idx].contains_sprite(my_sprites[0]):
+                            if sprite_layers[idx].contains_sprite(\
+                                                            my_sprites[0]):
                                 # renderer.remove_sprites(idx, my_sprites)
                                 # TODO: better interface
                                 sprite_layers[idx].remove_sprites(my_sprites)
@@ -707,29 +756,43 @@ def demo_pygame(file_name):
                                 print "added hero sprites to layer", idx
                         else:
                             # visibility
-                            sprite_layers[idx].visible = not sprite_layers[idx].visible
-                            print "layer", idx, "visible:", sprite_layers[idx].visible
+                            sprite_layers[idx].visible = \
+                                                not sprite_layers[idx].visible
+                            print "layer", idx, "visible:", \
+                                                    sprite_layers[idx].visible
                     else:
                         print "layer", idx, " does not exist on this map!"
                 elif event.key == pygame.K_UP:
                     if pressed_layer is not None:
                         # TODO: better interface
-                        layer = renderer._layers[world_map.layers[pressed_layer]]
-                        layer.set_layer_paralax_factor(layer.get_layer_paralax_factor_x() + 0.1)
-                        print "increase paralax factox on layer", pressed_layer, " to:", layer.get_layer_paralax_factor_x()
+                        layer = renderer._layers[\
+                                                world_map.layers[pressed_layer]]
+                        layer.set_layer_paralax_factor(\
+                                       layer.get_layer_paralax_factor_x() + 0.1)
+                        print "increase paralax factox on layer", \
+                                pressed_layer, " to:", \
+                                layer.get_layer_paralax_factor_x()
                 elif event.key == pygame.K_DOWN:
                     if pressed_layer is not None:
-                        layer = renderer._layers[world_map.layers[pressed_layer]]
-                        layer.set_layer_paralax_factor(layer.get_layer_paralax_factor_x() - 0.1)
-                        print "reduced paralax factox on layer", pressed_layer, " to:", layer.get_layer_paralax_factor_x()
+                        layer = renderer._layers[\
+                                                world_map.layers[pressed_layer]]
+                        layer.set_layer_paralax_factor(\
+                                       layer.get_layer_paralax_factor_x() - 0.1)
+                        print "reduced paralax factox on layer", pressed_layer,\
+                                    " to:", layer.get_layer_paralax_factor_x()
                     
             elif event.type == pygame.USEREVENT:
                 t = 0
                 print clock.get_fps()
 
                 if show_message:
-                    s = "Number of layers: %i (use 0-9 to toggle)   F1-F2 for other functions   Frames Per Second: %.2f" % (len(world_map.layers), clock.get_fps())
-                    message = font.render(s, 0, (255,255,255), (0,0,0)).convert()
+                    s = "Number of layers: %i (use 0-9 to toggle)   F1-F2 for \
+                                    other functions Frames Per Second: %.2f" % \
+                                    (len(world_map.layers), clock.get_fps())
+                    message = font.render(  s, \
+                                            0, \
+                                            (255, 255, 255), \
+                                            (0, 0, 0)).convert()
 
 
         if pressed_layer is None:
@@ -738,7 +801,8 @@ def demo_pygame(file_name):
             # When left Shift is held, the speed increases.
             # The speed interpolates based on time passed, so the demo navigates
             # at a reasonable pace even on huge maps.
-            speed = (3.0 + pressed[pygame.K_LSHIFT] * 36.0) * (dt / frames_per_sec)
+            speed = (3.0 + pressed[pygame.K_LSHIFT] * 36.0) * \
+                                                        (dt / frames_per_sec)
 
             # cam movement
             if pressed[pygame.K_DOWN]:
@@ -753,14 +817,14 @@ def demo_pygame(file_name):
         # update sprites position
         for spr in my_sprites:
             spr.update(dt)
-        # my_sprites[0].rect.center = cam_world_pos_x + 1.0*num_sprites*i/num_sprites + screen_width // 2 , cam_world_pos_y + i * 3 + screen_height // 2
         my_sprites[0].is_flat = hero_flat
         my_sprites[-1].is_flat = hero_flat
         my_sprites[0].rect.center = cam_world_pos_x , cam_world_pos_y
         my_sprites[-1].rect.center = cam_world_pos_x + 20 , cam_world_pos_y
 
         # adjust camera according the keypresses
-        renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y, screen_width, screen_height, 3)
+        renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y, \
+                                            margin=3)
 
         # clear screen, might be left out if every pixel is redrawn anyway
         screen.fill((0,0,0))
@@ -771,7 +835,8 @@ def demo_pygame(file_name):
             if sprite_layer.is_object_group:
                 # map objects
                 if draw_obj:
-                    _draw_obj_group(screen, sprite_layer, cam_world_pos_x, cam_world_pos_y, font)
+                    _draw_obj_group(screen, sprite_layer, cam_world_pos_x, \
+                                                        cam_world_pos_y, font)
             else:
                 renderer_render_layer(screen, sprite_layer, clip_sprites)
 
@@ -790,9 +855,13 @@ def _draw_obj_group(screen, obj_group, cam_world_pos_x, cam_world_pos_y, font):
         if map_obj.image_source:
             surf = pygame.image.load(map_obj.image_source)
             surf = pygame.transform.scale(surf, size)
-            screen.blit(surf, (goffx + map_obj.x - cam_world_pos_x, goffy + map_obj.y - cam_world_pos_y))
+            screen.blit(surf, (goffx + map_obj.x - cam_world_pos_x, \
+                                goffy + map_obj.y - cam_world_pos_y))
         else:
-            r = pygame.Rect((goffx + map_obj.x - cam_world_pos_x, goffy + map_obj.y - cam_world_pos_y), size)
+            r = pygame.Rect(\
+                        (goffx + map_obj.x - cam_world_pos_x, \
+                         goffy + map_obj.y - cam_world_pos_y),\
+                         size)
             pygame.draw.rect(screen, (255, 255, 0), r, 1)
             text_img = font.render(map_obj.name, 1, (255, 255, 0))
             screen.blit(text_img, r.move(1, 2))
