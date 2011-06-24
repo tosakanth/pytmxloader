@@ -452,6 +452,8 @@ class RendererPygame(object):
     def __init__(self, resource_loader):
         self._resource_loader = resource_loader
         self._cam_rect = pygame.Rect(0, 0, 10, 10)
+        self._double_margin_x = 2
+        self._double_margin_y = 2
 
     def get_layers_from_map(self):
         layers = []
@@ -465,21 +467,30 @@ class RendererPygame(object):
             return layer
         return SpriteLayer(layer_idx, self._resource_loader)
 
-    def set_camera_position(self, world_pos_x, world_pos_y, \
-                                                 alignment='center', margin=0):
+    def set_camera_position(self, world_pos_x, world_pos_y, alignment='center'):
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
-        self._margin = margin + 1
+        self._render_cam_rect.center = self._cam_rect.center
         
     def set_camera_position_and_size(self, world_pos_x, world_pos_y, \
-                                   width, height, alignment='center', margin=0):
+                                   width, height, alignment='center'):
         self._cam_rect.width = width
         self._cam_rect.height = height
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
-        self._margin = margin + 1
+        self._render_cam_rect = self._cam_rect.inflate(self._double_margin_x, \
+                                                        self._double_margin_y)
         
-    def set_camera_rect(self, cam_rect_world_coord, margin=0):
+    def set_camera_rect(self, cam_rect_world_coord):
         self._cam_rect = cam_rect_world_coord
-        self._margin = margin + 1
+        self._render_cam_rect = \
+                            cam_rect_world_coord.inflate(self._double_margin_x, \
+                                                        self._double_margin_y)
+        
+    def set_camera_margin(self, margin_x, margin_y):
+        self._double_margin_x = 2 * (margin_x + 1)
+        self._double_margin_y = 2 * (margin_y + 1)
+        self._render_cam_rect = self._cam_rect.inflate(self._double_margin_x, \
+                                                        self._double_margin_y)
+        
 
     def render_layer(self, surf, layer, clip_sprites=True, \
                                     sort_key=lambda spr: spr.get_draw_cond()):
@@ -512,7 +523,9 @@ class RendererPygame(object):
 
                         # self.paralax_factor_y = 1.0
             # self.paralax_center_x = 0.0
-            cam_rect = self._cam_rect
+            cam_rect = self._render_cam_rect
+            # print 'cam rect:', self._cam_rect
+            # print 'render r:', self._render_cam_rect
 
             cam_world_pos_x = cam_rect.x * layer.paralax_factor_x + \
                                                                 layer.position_x
@@ -520,13 +533,12 @@ class RendererPygame(object):
                                                                 layer.position_y
 
             # camera bounds, restricting number of tiles to draw
-            left = int(round(float(cam_world_pos_x) // layer.tilewidth)) - \
-                                                                self._margin
+            left = int(round(float(cam_world_pos_x) // layer.tilewidth))
             right = int(round(float(cam_world_pos_x + cam_rect.width) // \
-                                            layer.tilewidth)) + self._margin + 1
-            top = int(round(float(cam_world_pos_y) // tile_h)) - self._margin
+                                            layer.tilewidth)) + 1
+            top = int(round(float(cam_world_pos_y) // tile_h))
             bottom = int(round(float(cam_world_pos_y + cam_rect.height) // \
-                                            tile_h)) + self._margin + 1
+                                            tile_h)) + 1
 
             left = left if left > 0 else 0
             right = right if right < layer.num_tiles_x else layer.num_tiles_x
@@ -676,7 +688,7 @@ def demo_pygame(file_name):
     pygame_display_flip = pygame.display.flip
     sprite_layers = renderer.get_layers_from_map()
     renderer.set_camera_position_and_size(cam_world_pos_x, cam_world_pos_y, \
-                                        screen_width, screen_height, margin=3)
+                                        screen_width, screen_height)
 
     t = 0
 
@@ -823,8 +835,7 @@ def demo_pygame(file_name):
         my_sprites[-1].rect.center = cam_world_pos_x + 20 , cam_world_pos_y
 
         # adjust camera according the keypresses
-        renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y, \
-                                            margin=3)
+        renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y)
 
         # clear screen, might be left out if every pixel is redrawn anyway
         screen.fill((0,0,0))
