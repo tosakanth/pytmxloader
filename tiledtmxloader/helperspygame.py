@@ -165,6 +165,9 @@ class SpriteLayer(object):
         self.sprites = []
         self.is_object_group = _layer.is_object_group
         self.visible = _layer.visible
+        self.bottom_margin = 0
+        self._bottom_margin = 0
+        
         
         # init data to default
         # self.content2D = []
@@ -191,8 +194,11 @@ class SpriteLayer(object):
                     if sprites:
                         sprite = SpriteLayer._union_sprites(sprites, key, \
                                                                     _img_cache)
-                        
+                        if sprite.rect.height > self._bottom_margin:
+                            self._bottom_margin = sprite.rect.height
+
                     self.content2D[ypos_new][xpos_new] = sprite
+        self.bottom_margin = self._bottom_margin
         if __debug__: 
             print '%s: Sprite Cache hits: %d' % \
                                 (self.__class__.__name__, _img_cache["hits"])
@@ -414,6 +420,8 @@ class SpriteLayer(object):
 
     def add_sprite(self, sprite):
         self.sprites.append(sprite)
+        if sprite.rect.height > self.bottom_margin:
+            self.bottom_margin = sprite.rect.height
 
     def add_sprites(self, sprites):
         for sprite in sprites:
@@ -422,6 +430,11 @@ class SpriteLayer(object):
     def remove_sprite(self, sprite):
         if sprite in self.sprites:
             self.sprites.remove(sprite)
+        
+        self.bottom_margin = self._bottom_margin
+        for spr in self.sprites:
+            if spr.rect.height > self.bottom_margin:
+                self.bottom_margin = spr.rect.height
 
     def remove_sprites(self, sprites):
         for sprite in sprites:
@@ -452,8 +465,7 @@ class RendererPygame(object):
     def __init__(self, resource_loader):
         self._resource_loader = resource_loader
         self._cam_rect = pygame.Rect(0, 0, 10, 10)
-        self._double_margin_x = 2
-        self._double_margin_y = 2
+        self._margin = (0, 0, 0, 0) # left, right, top, bottom
 
     def get_layers_from_map(self):
         layers = []
@@ -476,20 +488,37 @@ class RendererPygame(object):
         self._cam_rect.width = width
         self._cam_rect.height = height
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
-        self._render_cam_rect = self._cam_rect.inflate(self._double_margin_x, \
-                                                        self._double_margin_y)
+        self.set_camera_margin(*self._margin)
         
     def set_camera_rect(self, cam_rect_world_coord):
         self._cam_rect = cam_rect_world_coord
-        self._render_cam_rect = \
-                            cam_rect_world_coord.inflate(self._double_margin_x, \
-                                                        self._double_margin_y)
+        self.set_camera_margin(*self._margin)
         
-    def set_camera_margin(self, margin_x, margin_y):
-        self._double_margin_x = 2 * (margin_x + 1)
-        self._double_margin_y = 2 * (margin_y + 1)
-        self._render_cam_rect = self._cam_rect.inflate(self._double_margin_x, \
-                                                        self._double_margin_y)
+    def set_camera_margin(self, margin_left, margin_right, margin_top, margin_bottom):
+        """
+        Set the margin around the camera (in pixels).
+        
+        :Parameters:
+            margin_left : int
+                number of pixels of the left side marging
+            margin_right : int
+                number of pixels of the right side marging
+            margin_top : int
+                number of pixels of the top side marging
+            margin_bottom : int
+                number of pixels of the left bottom marging
+        
+        """
+        self._margin = (margin_left, margin_right, margin_top, margin_bottom)
+        self._render_cam_rect = pygame.Rect(self._cam_rect)
+        # adjust left margin
+        self._render_cam_rect.left = self._render_cam_rect.left - margin_left
+        # adjust right margin
+        self._render_cam_rect.width = self._render_cam_rect.width + margin_left + margin_right
+        # adjust top margin
+        self._render_cam_rect.top = self._render_cam_rect.top - margin_top
+        # adjust bottom margin
+        self._render_cam_rect.height = self._render_cam_rect.height + margin_top + margin_bottom
         
 
     def render_layer(self, surf, layer, clip_sprites=True, \
@@ -514,6 +543,10 @@ class RendererPygame(object):
 
             if layer.is_object_group:
                 return
+
+            if layer.bottom_margin > self._margin[3]:
+                left, right, top, bottom = self._margin
+                self.set_camera_margin(left, right, top, layer.bottom_margin)
 
             # optimizations
             surf_blit = surf.blit
