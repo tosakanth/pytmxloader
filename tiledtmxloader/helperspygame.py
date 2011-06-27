@@ -204,7 +204,6 @@ class SpriteLayer(object):
                                 (self.__class__.__name__, _img_cache["hits"])
         del _img_cache
 
-
     def get_collapse_level(self):
         return self._level
 
@@ -234,8 +233,8 @@ class SpriteLayer(object):
         layer.is_object_group = layer_orig.is_object_group
         layer.visible = layer_orig.visible
         
-        for yidx, row in enumerate(layer_orig.content2D):
-            for xidx, sprite in enumerate(row):
+        for xidx, row in enumerate(layer_orig.content2D):
+            for yidx, sprite in enumerate(row):
                 w, h = sprite.image.get_size()
                 new_w = w * scale_w
                 new_h = h * scale_h
@@ -338,6 +337,7 @@ class SpriteLayer(object):
         
         # dont copy to a new image if only one sprite is in sprites 
         # (reduce memory usage)
+        # NOTE: this messes up the cache hits (only on non-collapsed maps)
         if len(sprites) == 1:
             sprite = sprites[0]
             sprite.key = key
@@ -367,8 +367,10 @@ class SpriteLayer(object):
         sprites = []
         key = []
         for xpos, ypos in coords:
-            if ypos >= len(layer.content2D) or \
-                                xpos >= len(layer.content2D[ypos]):
+            ## ISSUE 14: maps was displayed only sqared because wrong 
+            ## boundary checks
+            if xpos >= len(layer.content2D) or \
+                                ypos >= len(layer.content2D[xpos]):
                 # print "CONTINUE", xpos, ypos
                 key.append(-1) # border and corner cases!
                 continue
@@ -444,6 +446,9 @@ class SpriteLayer(object):
         if sprite in self.sprites:
             return True
         return False
+
+    def has_sprites(self):
+        return (len(self.sprites) > 0)
 
     def set_layer_paralax_factor(self, factor_x=1.0, factor_y=None):
         self.paralax_factor_x = factor_x
@@ -577,6 +582,8 @@ class RendererPygame(object):
             right = right if right < layer.num_tiles_x else layer.num_tiles_x
             top = top if top > 0 else 0
             bottom = bottom if bottom < layer.num_tiles_y else layer.num_tiles_y
+            
+            # print '???', layer.num_tiles_x, layer.num_tiles_y, left, right, top, bottom, cam_rect
 
             # sprites
             spr_idx = 0
@@ -617,6 +624,7 @@ class RendererPygame(object):
                 # next line of the map
                 for xpos in range(left, right):
                     tile_sprite = layer_content2D[ypos][xpos]
+                    # print '?', xpos, ypos, tile_sprite
                     if tile_sprite:
                         surf_blit(tile_sprite.image, \
                                     tile_sprite.rect.move( - cam_world_pos_x, \
