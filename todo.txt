@@ -25,10 +25,6 @@ helperspygame.py
         will probably be removed and replaces with a camera class since 
         there isn't more to it than cam set_camera_position() and render_layer()
         
-    class Camera:
-        the new mentioned camera class
-        
-
     maybe introduce a global image cache
 
 

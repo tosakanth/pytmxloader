@@ -249,12 +249,63 @@ class SpriteLayer(object):
     # TODO: implement merge
     @staticmethod
     def merge(layers): # -> sprite_layer
-        raise NotImplementedError
+        tile_width = None
+        tile_height = None
+        num_tiles_x = None
+        num_tiles_y = None
+        position_x = None
+        position_y = None
+        new_layer = None
+        
+        for layer in layers:
+            if layer.is_object_group:
+                raise Exception("not a SpriteLayer")
+                
+            assert isinstance(layer, SpriteLayer), "layer is not an instance of SpriteLayer"
+                
+            # just use the values from first layer
+            tile_width = tile_width if tile_width else layer.tile_width
+            tile_height = tile_height if tile_height else layer.tile_height
+            num_tiles_x = num_tiles_x if num_tiles_x else layer.num_tiles_x
+            num_tiles_y = num_tiles_y if num_tiles_y else layer.num_tiles_y
+            position_x = position_x if position_x else layer.position_x
+            position_y = position_y if position_y else layer.position_y
+            
+            # check they are equal for all layers
+            if layer.tile_width != tile_width:
+                raise Exception("layers do not have same tile_width")
+            if layer.tile_height != tile_height:
+                raise Exception("layers do not have same tile_height")
+            if layer.num_tiles_x != num_tiles_x:
+                raise Exception("layers do not have same number of tiles in x direction")
+            if layer.num_tiles_y != num_tiles_y:
+                raise Exception("layers do not have same number of tiles in y direction")
+            if layer.position_x != position_x:
+                raise Exception("layers are not at same position in x")
+            if layer.position_y != position_y:
+                raise Exception("layers are not at same position in y")
+                
+            if new_layer is None:
+                new_layer = SpriteLayer(-2, layer._resource_loader)
 
-    @staticmethod
-    def uncollapse(layer):
-        print "uncollapse!"
-    
+            for ypos_new in xrange(0, num_tiles_y):
+                for xpos_new in xrange(0, num_tiles_x):
+                        sprite = layer.content2D[ypos_new][xpos_new]
+                        if sprite:
+                            new_sprite = new_layer.content2D[ypos_new][xpos_new]
+                            if new_sprite:
+                                assert sprite.rect.topleft == new_sprite.rect.topleft
+                                assert sprite.rect.size == new_sprite.rect.size
+                                new_sprite.image.blit(sprite.image, (0, 0), sprite.source_rect, sprite.flags)
+                            else:
+                                new_sprite = sprite
+                            new_layer.content2D[ypos_new][xpos_new] = new_sprite
+                            
+                            
+
+        return new_layer
+        
+
     @staticmethod
     def collapse(layer):
 
@@ -276,27 +327,27 @@ class SpriteLayer(object):
             
         new_tilewidth = layer.tilewidth * level
         new_tileheight = layer.tileheight * level
-        new_width = int(layer.num_tiles_x / level)
-        new_height = int(layer.num_tiles_y / level)
-        if new_width * level < layer.num_tiles_x:
-            new_width += 1
-        if new_height * level < layer.num_tiles_y:
-            new_height += 1
+        new_num_tiles_x = int(layer.num_tiles_x / level)
+        new_num_tiles_y = int(layer.num_tiles_y / level)
+        if new_num_tiles_x * level < layer.num_tiles_x:
+            new_num_tiles_x += 1
+        if new_num_tiles_y * level < layer.num_tiles_y:
+            new_num_tiles_y += 1
 
         # print "old size", layer.num_tiles_x, layer.num_tiles_y
-        # print "new size", new_width, new_height
+        # print "new size", new_num_tiles_x, new_num_tiles_y
         
-        _content2D = [None] * new_height
+        _content2D = [None] * new_num_tiles_y
         # generate the needed lists
             
-        for ypos in xrange(new_height):
-            _content2D[ypos] = [None] * new_width
+        for ypos in xrange(new_num_tiles_y):
+            _content2D[ypos] = [None] * new_num_tiles_x
 
         # fill them
         _img_cache = {}
         _img_cache["hits"] = 0
-        for ypos_new in xrange(0, new_height):
-            for xpos_new in xrange(0, new_width):
+        for ypos_new in xrange(0, new_num_tiles_y):
+            for xpos_new in xrange(0, new_num_tiles_x):
                 coords = SpriteLayer._get_list_of_neighbour_coord(\
                                         xpos_new, ypos_new, level, \
                                         layer.num_tiles_x, layer.num_tiles_y)
@@ -306,17 +357,21 @@ class SpriteLayer(object):
                     _content2D[ypos_new][xpos_new] = sprite
 
         # print "len content2D:", len(self.content2D)
-        layer.tilewidth  = new_tilewidth
-        layer.tileheight = new_tileheight
-        layer.num_tiles_x = new_width
-        layer.num_tiles_y = new_height
-        layer.content2D = _content2D
+        # TODO: separate constructor from init code (here the layer is parsed for nothing, content2D will be replaced)
+        new_layer = SpriteLayer( layer.layer_idx, layer._resource_loader)
+
+        new_layer.tilewidth  = new_tilewidth
+        new_layer.tileheight = new_tileheight
+        new_layer.num_tiles_x = new_num_tiles_x
+        new_layer.num_tiles_y = new_num_tiles_y
+        new_layer.content2D = _content2D
 
         # HACK:
-        layer._level *= 2
+        new_layer._level = layer._level * 2
             
         if __debug__ and level > 1: 
             print '%s: Sprite Cache hits: %d' % ("collapse", _img_cache["hits"])
+        return new_layer
 
     @staticmethod
     def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, \
@@ -783,7 +838,8 @@ def demo_pygame(file_name):
                             # uncollapse
                             # TODO: better interface
                             render_layer = sprite_layers[idx]
-                            SpriteLayer.collapse(render_layer)
+                            render_layer = SpriteLayer.collapse(render_layer)
+                            sprite_layers[idx] = render_layer
                             print "layer has uncollapsed, level:", \
                                                render_layer.get_collapse_level()
                         elif event.mod & pygame.KMOD_SHIFT:
