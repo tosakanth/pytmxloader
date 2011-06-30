@@ -687,6 +687,35 @@ class RendererPygame(object):
                                     tile_sprite.source_rect, \
                                     tile_sprite.flags)
 
+    def pick_layers(self, layers, screen_x, screen_y): 
+        """
+        Returns the sprites at the given screen position or an empty list.
+        First entry is the top sprite, last entry the background sprite
+        The layers argument needs to be sorted as [background, ..., top]
+        """
+        # TODO: right place? or just a screenToWorld method needed?
+        sprites = []
+        for layer in reversed(layers):
+            if layer.is_object_group:
+                pass
+            else:
+                cam_world_pos_x = self._render_cam_rect.x / layer.paralax_factor_x + layer.position_x
+                cam_world_pos_y = self._render_cam_rect.y / layer.paralax_factor_y + layer.position_y
+                
+                world_x = screen_x + cam_world_pos_x
+                world_y = screen_y + cam_world_pos_y
+                
+                tile_x = int(world_x / layer.tilewidth)
+                tile_y = int(world_y // layer.tileheight)
+                
+                sprite = layer.content2D[tile_y][tile_x]
+                if sprite:
+                    sprites.append(sprite)
+            
+        return sprites
+        
+        
+        
 #  -----------------------------------------------------------------------------
 
 class Dude(SpriteLayer.Sprite):
@@ -874,8 +903,7 @@ def demo_pygame(file_name):
                 elif event.key == pygame.K_UP:
                     if pressed_layer is not None:
                         # TODO: better interface
-                        layer = renderer._layers[\
-                                                world_map.layers[pressed_layer]]
+                        layer = sprite_layers[pressed_layer]
                         layer.set_layer_paralax_factor(\
                                        layer.get_layer_paralax_factor_x() + 0.1)
                         print "increase paralax factox on layer", \
@@ -883,8 +911,7 @@ def demo_pygame(file_name):
                                 layer.get_layer_paralax_factor_x()
                 elif event.key == pygame.K_DOWN:
                     if pressed_layer is not None:
-                        layer = renderer._layers[\
-                                                world_map.layers[pressed_layer]]
+                        layer = sprite_layers[pressed_layer]
                         layer.set_layer_paralax_factor(\
                                        layer.get_layer_paralax_factor_x() - 0.1)
                         print "reduced paralax factox on layer", pressed_layer,\
@@ -936,6 +963,12 @@ def demo_pygame(file_name):
 
         # clear screen, might be left out if every pixel is redrawn anyway
         screen.fill((0,0,0))
+        
+        sprites = renderer.pick_layers(sprite_layers, *pygame.mouse.get_pos())
+        for spr in sprites:
+            dud = my_sprites[2]
+            dud.rect.topleft = spr.rect.topleft
+            print '>>>>>', dud.rect.topleft
 
         # render the map
         # TODO: manage render layers
