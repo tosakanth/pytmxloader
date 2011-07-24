@@ -784,7 +784,7 @@ def demo_pygame(file_name):
     pygame.time.set_timer(pygame.USEREVENT, 1000)
 
     # add additional sprites
-    num_sprites = 1000
+    num_sprites = 4
     my_sprites = []
     for i in range(num_sprites):
         j = num_sprites - i
@@ -968,7 +968,7 @@ def demo_pygame(file_name):
         for spr in sprites:
             dud = my_sprites[2]
             dud.rect.topleft = spr.rect.topleft
-            print '>>>>>', dud.rect.topleft
+            # print '>>>>>', dud.rect.topleft
 
         # render the map
         # TODO: manage render layers

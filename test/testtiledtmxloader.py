@@ -3,11 +3,10 @@
 
 import sys
 import os
-p = os.path.join(os.path.dirname(__file__), os.pardir)
+p = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 print p
 sys.path.insert(0, p)
 print sys.path
-
 
 import os
 import unittest
@@ -35,7 +34,7 @@ except:
 class MapLoadTests(unittest.TestCase):
 
     def setUp(self):
-        os.chdir(os.path.dirname(__file__))
+        os.chdir(os.path.abspath(os.path.dirname(__file__)))
         if not _has_pygame and not _has_pyglet:
             self.fail("needs either module 'pyglet' or 'pygame' installed for testing")
         
