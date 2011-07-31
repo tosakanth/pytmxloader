@@ -695,8 +695,9 @@ class RendererPygame(object):
         if layer.is_object_group:
             pass
         else:
-            world_pos_x = screen_x + self._render_cam_rect.x * layer.paralax_factor_x
-            world_pos_y = screen_y + self._render_cam_rect.y * layer.paralax_factor_y
+            world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
+            # world_pos_x = screen_x + self._render_cam_rect.x * layer.paralax_factor_x
+            # world_pos_y = screen_y + self._render_cam_rect.y * layer.paralax_factor_y
             
             tile_x = int(world_pos_x / layer.tilewidth)
             tile_y = int(world_pos_y / layer.tileheight)
@@ -715,14 +716,25 @@ class RendererPygame(object):
         if layer.is_object_group:
             pass
         else:
-            world_pos_x = screen_x + self._render_cam_rect.x * layer.paralax_factor_x
-            world_pos_y = screen_y + self._render_cam_rect.y * layer.paralax_factor_y
+            world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
+            # world_pos_x = screen_x + self._render_cam_rect.x * layer.paralax_factor_x
+            # world_pos_y = screen_y + self._render_cam_rect.y * layer.paralax_factor_y
             
             r = pygame.Rect(world_pos_x, world_pos_y, 1, 1)
             indices = r.collidelistall(layer.sprites)
             return [layer.sprites[idx] for idx in indices]
         return []
         
+    def get_world_pos(self, layer, screen_x, screen_y):
+        """
+            returns the world coordinates for the given screen location and layer
+            
+            Note: this is important so one can check which entity is there in the model
+                    (knowing which sprite is there does not help much)
+        
+        """
+        return (screen_x + self._render_cam_rect.x * layer.paralax_factor_x, screen_y + self._render_cam_rect.y * layer.paralax_factor_y)
+
         
         
 #  -----------------------------------------------------------------------------
