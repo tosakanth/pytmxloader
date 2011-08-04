@@ -4,9 +4,9 @@
 import sys
 import os
 p = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-print p
+print "inserting to sys.path: ", p
 sys.path.insert(0, p)
-print sys.path
+# print sys.path
 
 import os
 import unittest
@@ -30,13 +30,17 @@ try:
 except:
     pass
 
-
+# TODO: separate general, pygame and pyglet tests
+    
 class MapLoadTests(unittest.TestCase):
 
     def setUp(self):
         os.chdir(os.path.abspath(os.path.dirname(__file__)))
         if not _has_pygame and not _has_pyglet:
             self.fail("needs either module 'pyglet' or 'pygame' installed for testing")
+            
+    def test_tile_properties(self):
+        self.fail("implement test!! (load map with tile properties and read a tile proerty from test")
         
     #--- pygame tests ---#
     def test_load_map_from_cur_dir_pygame(self):
@@ -101,8 +105,7 @@ class MapLoadTests(unittest.TestCase):
             
     def test_get_list_of_quad_coords(self):
         if _has_pygame:
-            layer = tiledtmxloader.helperspygame.RendererPygame._Layer
-                                                #xpos, ypos, level=2
+            layer = tiledtmxloader.helperspygame.SpriteLayer
             coords = layer._get_list_of_neighbour_coord(0, 0, 1, 10, 10)
             expected = ((0, 0), )
             self.compare(expected, coords)

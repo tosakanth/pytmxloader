@@ -1,13 +1,30 @@
 
+---- TODO ----------------------------------------------------------------------
 
-make the camera values use a rect!
+2011-08-03 - Gumm recollects ideas from past conversations.
 
-Notes:
+- Support tile attributes.
+- Redo layers (I see there are some notes above). Also, when layers are
+     transformed (merge, scale, etc.) the resulting layer needs to retain its Tiled attributes.
+     
+- Flashy examples.
+- Maybe a tutorial for nubs. "How do I use Tiled to make a level?"
+- class ResourceLoaderPygame: implement new feature to support flipped tiles (newer versions of tiled support that)
+- maybe introduce a global image cache
+- Integrate an efficient scrollbuffer of some kind (instead of collapse)?
 
-helperspygame.py
 
-    class ResourceLoaderPygame:
-        implement new feature to support flipped tiles (newer versions of tiled support that)
+
+
+---- Done ----------------------------------------------------------------------
+
+2011-08-04
++ 1. Convert x,y,w,h arguments to rects. (make the camera values use a rect!)
+
+        
+
+==== Notes =====================================================================
+
 
     class Sprite: 
         will stay the same (more or less)
@@ -24,11 +41,6 @@ helperspygame.py
     class RendererPygame: 
         will probably be removed and replaces with a camera class since 
         there isn't more to it than cam set_camera_position() and render_layer()
-        
-    maybe introduce a global image cache
-
-
-    
     
 On 29.05.2011 01:14, B W wrote:
 > Hi, DR0ID.
@@ -94,16 +106,5 @@ Profiling and breaking the map loading process into small (and fast) task should
 
 Do you mind stalling this feature to the 3.1 (or 4.0 if api needs to change) version?
 
-~DR0ID
 
----
-8/3/2011 - Gumm recollects ideas from past conversations.
 
-1. Convert x,y,w,h arguments to rects.
-2. Redo layers (I see there are some notes above). Also, when layers are
-transformed (merge, scale, etc.) the resulting layer needs to retain its Tiled
-attributes.
-3. Support tile attributes.
-4. Flashy examples.
-5. Maybe a tutorial for nubs. "How do I use Tiled to make a level?"
-6. Integrate an efficient scrollbuffer of some kind (instead of collapse)?
