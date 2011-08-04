@@ -518,9 +518,9 @@ class SpriteLayer(object):
     def get_layer_paralax_factor_y(self):
         return self.paralax_factor_y
 
+#  -----------------------------------------------------------------------------
 
 class RendererPygame(object):
-
 
     def __init__(self, resource_loader):
         self._resource_loader = resource_loader
@@ -717,8 +717,6 @@ class RendererPygame(object):
             pass
         else:
             world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
-            # world_pos_x = screen_x + self._render_cam_rect.x * layer.paralax_factor_x
-            # world_pos_y = screen_y + self._render_cam_rect.y * layer.paralax_factor_y
             
             r = pygame.Rect(world_pos_x, world_pos_y, 1, 1)
             indices = r.collidelistall(layer.sprites)
@@ -733,38 +731,42 @@ class RendererPygame(object):
                     (knowing which sprite is there does not help much)
         
         """
+        # TODO: also use layer.x and layer.y offset
         return (screen_x + self._render_cam_rect.x * layer.paralax_factor_x, screen_y + self._render_cam_rect.y * layer.paralax_factor_y)
 
         
         
 #  -----------------------------------------------------------------------------
 
-class Dude(SpriteLayer.Sprite):
 
-    def __init__(self, img, rect):
-        super(Dude, self).__init__(img, rect)
-        self.random = __import__('random')
-        self.velocity_x = 0
-        self.velocity_y = 0
-        self.position_x = self.random.randint(100, 4000)
-        self.position_y = self.random.randint(100, 4000)
-        self.rect.center = (self.position_x, self.position_y)
-
-    def update(self, dt):
-        if self.random.random() < 0.05:
-            if self.velocity_x:
-                self.velocity_x = 0
-                self.velocity_y = 0
-            else:
-                self.velocity_x = self.random.randint(-10, 10) * 0.005
-                self.velocity_y = self.random.randint(-10, 10) * 0.005
-        self.position_x += self.velocity_x * dt
-        self.position_y += self.velocity_y * dt
-        self.rect.center = (self.position_x, self.position_y)
-
-
+#  -----------------------------------------------------------------------------
 
 def demo_pygame(file_name):
+
+    class Dude(SpriteLayer.Sprite):
+
+        def __init__(self, img, rect):
+            super(Dude, self).__init__(img, rect)
+            self.random = __import__('random')
+            self.velocity_x = 0
+            self.velocity_y = 0
+            self.position_x = self.random.randint(100, 4000)
+            self.position_y = self.random.randint(100, 4000)
+            self.rect.center = (self.position_x, self.position_y)
+
+        def update(self, dt):
+            if self.random.random() < 0.05:
+                if self.velocity_x:
+                    self.velocity_x = 0
+                    self.velocity_y = 0
+                else:
+                    self.velocity_x = self.random.randint(-10, 10) * 0.005
+                    self.velocity_y = self.random.randint(-10, 10) * 0.005
+            self.position_x += self.velocity_x * dt
+            self.position_y += self.velocity_y * dt
+            self.rect.center = (self.position_x, self.position_y)
+
+
 
     # parser the map (it is done here to initialize the 
     # window the same size as the map if it is small enough)
@@ -1009,7 +1011,7 @@ def demo_pygame(file_name):
         if show_message:
             screen.blit(message, (0,0))
 
-        print '??', len(sprites)
+        # print '??', len(sprites)
         for idx, spr in enumerate(sprites):
             screen.blit(spr.image, (idx * spr.rect.w, screen.get_size()[1] - spr.rect.h))
             # print '>>>>>', dud.rect.topleft

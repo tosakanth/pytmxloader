@@ -700,7 +700,7 @@ class TileMapParser(object):
     # -- parsers -- #
     def parse(self, file_name):
         u"""
-        Parses the given map. Does no decoding nor loading the data.
+        Parses the given map. Does no decoding nor loading of the data.
         :return: instance of TileMap
         """
         # would be more elegant to use  "with open(file_name, "rb") as tmx_file:" but that is python 2.6
