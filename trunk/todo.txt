@@ -96,11 +96,14 @@ Do you mind stalling this feature to the 3.1 (or 4.0 if api needs to change) ver
 
 ~DR0ID
 
+---
+8/3/2011 - Gumm recollects ideas from past conversations.
 
-
-       
-
-
-
-    
-
+1. Convert x,y,w,h arguments to rects.
+2. Redo layers (I see there are some notes above). Also, when layers are
+transformed (merge, scale, etc.) the resulting layer needs to retain its Tiled
+attributes.
+3. Support tile attributes.
+4. Flashy examples.
+5. Maybe a tutorial for nubs. "How do I use Tiled to make a level?"
+6. Integrate an efficient scrollbuffer of some kind (instead of collapse)?
