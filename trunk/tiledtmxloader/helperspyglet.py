@@ -125,10 +125,13 @@ class ResourceLoaderPyglet(tiledtmxloader.AbstractResourceLoader):
         
         """
         source_img = self._load_image(filename)
+        # ISSUE 16 fixed wrong sized tilesets
+        height = (source_img.height // tile_height) * tile_height
+        width = (source_img.width // tile_width) * tile_width
         images = []
         # Reverse the map column reading to compensate for pyglet's y-origin.
-        for y in range(source_img.height - tile_height, margin - tile_height, -tile_height - spacing):
-            for x in range(margin, source_img.width, tile_width + spacing):
+        for y in range(height - tile_height, margin - tile_height, -tile_height - spacing):
+            for x in range(margin, width, tile_width + spacing):
                 img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
                 images.append(img_part)
         return images
