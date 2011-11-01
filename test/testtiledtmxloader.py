@@ -35,6 +35,14 @@ class MapLoadTestsPygame(unittest.TestCase):
     def test_tile_properties(self):
         self.fail("implement test!! (load map with tile properties and read a tile proerty from test")
         
+    def test_wrong_sized_tileset(self):
+        if _has_pygame:
+            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("map.tmx")
+            self.resourceloader.load(world_map)
+            num_images = len(self.resourceloader.indexed_tiles)
+            self.assertTrue(num_images == 120, "should be 120 tiles, wrong number of tile images loaded: " + str(num_images))
+    
+        
     #--- pygame tests ---#
     def test_load_map_from_cur_dir(self):
         if _has_pygame:
@@ -138,7 +146,7 @@ except:
     pass
 
 
-class MapLoadTestsPygame(MapLoadTestsPygame):
+class MapLoadTestsPyglet(MapLoadTestsPygame):
 
     def setUp(self):
         os.chdir(os.path.abspath(os.path.dirname(__file__)))

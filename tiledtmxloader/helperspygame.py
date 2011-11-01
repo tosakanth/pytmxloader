@@ -70,6 +70,13 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
                           tile_width, tile_height, colorkey=None): #-> [images]
         source_img = self._load_image(filename, colorkey)
         width, height = source_img.get_size()
+        # ISSUE 16
+        # if the image size does not match a multiple of tile_width or 
+        # tile_height it will mess up the number of tiles resulting in
+        # wrong GID's for the tiles
+        width = (width // tile_width) * tile_width
+        height = (height // tile_height) * tile_height
+        print '?????????????????'
         images = []
         for ypos in xrange(margin, height, tile_height + spacing):
             for xpos in xrange(margin, width, tile_width + spacing):
