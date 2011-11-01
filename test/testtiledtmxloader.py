@@ -22,86 +22,79 @@ try:
 except:
     pass
 
-_has_pyglet = False
-try:
-    import pyglet
-    _has_pyglet = True
-    import tiledtmxloader.helperspyglet
-except:
-    pass
-
-# TODO: separate general, pygame and pyglet tests
     
-class MapLoadTests(unittest.TestCase):
+class MapLoadTestsPygame(unittest.TestCase):
 
     def setUp(self):
         os.chdir(os.path.abspath(os.path.dirname(__file__)))
-        if not _has_pygame and not _has_pyglet:
-            self.fail("needs either module 'pyglet' or 'pygame' installed for testing")
-            
+        if not _has_pygame:
+            self.fail("needs either module 'pygame' installed for testing")
+        self.resourceloader = tiledtmxloader.helperspygame.ResourceLoaderPygame()
+        
+        
     def test_tile_properties(self):
         self.fail("implement test!! (load map with tile properties and read a tile proerty from test")
         
     #--- pygame tests ---#
-    def test_load_map_from_cur_dir_pygame(self):
+    def test_load_map_from_cur_dir(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_load_map_from_cur_dir_using_tsx_pygame(self):
+    def test_load_map_from_cur_dir_using_tsx(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_using_tsx.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_load_map_from_sub_dir_using_tsx_pygame(self):
+    def test_load_map_from_sub_dir_using_tsx(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini2/mini2.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_load_map_from_sub_dir_pygame(self):
+    def test_load_map_from_sub_dir(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini2/mini2_alt.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_load_map_from_sub_dir_using_tsx_from_sub_dir_pygame(self):
+    def test_load_map_from_sub_dir_using_tsx_from_sub_dir(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini3/mini3.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_load_map_from_sub_dir_using_tsx_from_sub_dir_and_img_from_sub_dir_pygame(self):
+    def test_load_map_from_sub_dir_using_tsx_from_sub_dir_and_img_from_sub_dir(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini4/mini4.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_can_load_compression_xml_pygame(self):
+    def test_can_load_compression_xml(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_xml.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_can_load_compression_cvs_pygame(self):
+    def test_can_load_compression_cvs(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_cvs.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_can_load_compression_base64_zlib_pygame(self):
+    def test_can_load_compression_base64_zlib(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_zlib.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_can_load_compression_base64_uncompressed_pygame(self):
+    def test_can_load_compression_base64_uncompressed(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_uncompressed.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_can_load_compression_base64_gzip_pygame(self):
+    def test_can_load_compression_base64_gzip(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_gzip.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
 
-    def test_can_load_compression_base64_gzip_dtd_pygame(self):
+    def test_can_load_compression_base64_gzip_dtd(self):
         if _has_pygame:
             world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_gzip_dtd.tmx")
-            tiledtmxloader.helperspygame.ResourceLoaderPygame().load(world_map)
+            self.resourceloader.load(world_map)
             
     def test_get_list_of_quad_coords(self):
         if _has_pygame:
@@ -134,68 +127,25 @@ class MapLoadTests(unittest.TestCase):
                                     ", ".join(map(str, captured))))
 
     
+#  -----------------------------------------------------------------------------
+
+_has_pyglet = False
+try:
+    import pyglet
+    _has_pyglet = True
+    import tiledtmxloader.helperspyglet
+except:
+    pass
+
+
+class MapLoadTestsPygame(MapLoadTestsPygame):
+
+    def setUp(self):
+        os.chdir(os.path.abspath(os.path.dirname(__file__)))
+        if not _has_pyglet:
+            self.fail("needs either module 'pyglet' installed for testing")
+        self.resourceloader = tiledtmxloader.helperspyglet.ResourceLoaderPyglet()
             
-
-    #--- pyglet tests ---#
-    def test_load_map_from_cur_dir_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-        
-    def test_load_map_from_cur_dir_using_tsx_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_using_tsx.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_load_map_from_sub_dir_using_tsx_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini2/mini2.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_load_map_from_sub_dir_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini2/mini2_alt.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_load_map_from_sub_dir_using_tsx_from_sub_dir_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini3/mini3.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_load_map_from_sub_dir_using_tsx_from_sub_dir_and_img_from_sub_dir_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("mini4/mini4.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-            
-    def test_can_load_compression_xml_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_xml.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_can_load_compression_cvs_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_cvs.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_can_load_compression_base64_zlib_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_zlib.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_can_load_compression_base64_uncompressed_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_uncompressed.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_can_load_compression_base64_gzip_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_gzip.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
-
-    def test_can_load_compression_base64_gzip_dtd_pyglet(self):
-        if _has_pyglet:
-            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("minix_base64_gzip_dtd.tmx")
-            tiledtmxloader.helperspyglet.ResourceLoaderPyglet().load(world_map)
 
 
 if __name__ == '__main__':
