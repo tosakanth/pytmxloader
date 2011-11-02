@@ -76,7 +76,6 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
         # wrong GID's for the tiles
         width = (width // tile_width) * tile_width
         height = (height // tile_height) * tile_height
-        print '?????????????????'
         images = []
         for ypos in xrange(margin, height, tile_height + spacing):
             for xpos in xrange(margin, width, tile_width + spacing):
