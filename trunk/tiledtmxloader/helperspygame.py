@@ -66,6 +66,19 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
     def __init__(self):
         tiledtmxloader.AbstractResourceLoader.__init__(self)
 
+    def load(self, tile_map):
+        tiledtmxloader.AbstractResourceLoader.load(self, tile_map)
+        # ISSUE 17: flipped tiles
+        for layer in self.world_map.layers:
+            for gid in layer.decoded_content:
+                if gid not in self.indexed_tiles:
+                    if gid & self.FLIP_X or gid & self.FLIP_Y:
+                        image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
+                        offx, offy, img = self.indexed_tiles[image_gid]
+                        img = img.copy()
+                        img = pygame.transform.flip(img, bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
+                        self.indexed_tiles[gid] = (offx, offy, img)
+
     def _load_image_parts(self, filename, margin, spacing, \
                           tile_width, tile_height, colorkey=None): #-> [images]
         source_img = self._load_image(filename, colorkey)

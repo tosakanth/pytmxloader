@@ -63,6 +63,7 @@ import os.path
 
 import pyglet
 
+import copy
 import tiledtmxloader
 
 #  -----------------------------------------------------------------------------
@@ -75,6 +76,26 @@ class ResourceLoaderPyglet(tiledtmxloader.AbstractResourceLoader):
     pyglet.image.load's capability to work with file-like objects.
     
     """
+
+    def load(self, tile_map):
+        tiledtmxloader.AbstractResourceLoader.load(self, tile_map)
+        # ISSUE 17: flipped tiles
+        for layer in self.world_map.layers:
+            for gid in layer.decoded_content:
+                if gid not in self.indexed_tiles:
+                    if gid & self.FLIP_X or gid & self.FLIP_Y:
+                        image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
+                        offx, offy, img = self.indexed_tiles[image_gid]
+                        # TODO: how to flip it? this does mix textures and image classes
+                        img = copy.deepcopy(img)
+                        tex = img.get_texture()
+                        tex.anchor_x = tex.width // 2
+                        tex.anchor_y = tex.height // 2
+                        tex2 = tex.get_transform(bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
+                        # img2 = pyglet.image.ImageDataRegion(img.x, img.y, tex2.width, tex2.height, tex2.image_data))
+                        tex.anchor_x = 0
+                        tex.anchor_y = 0
+                        self.indexed_tiles[gid] = (offx, offy, tex2)
 
     def _load_image(self, filename, fileobj=None):
         """Load a single image.
@@ -165,7 +186,7 @@ def demo_pyglet(file_name):
     # window and the update function. Note that the position is in integers to
     # match Pyglet Sprites. Using floating-point numbers causes graphical
     # problems. See http://groups.google.com/group/pyglet-users/browse_thread/thread/52f9ae1ef7b0c8fa?pli=1
-    delta = [0, 0]
+    delta = [200, -world_map.pixel_height+150]
     frames_per_sec = 1.0 / 30.0
     window = pyglet.window.Window()
 
