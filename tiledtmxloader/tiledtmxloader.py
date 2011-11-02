@@ -732,6 +732,9 @@ class TileMapParser(object):
 
 class AbstractResourceLoader(object):
 
+    FLIP_X = 1<<31
+    FLIP_Y = 1<<30
+
     def __init__(self):
         self.indexed_tiles = {} # {gid: (offsetx, offsety, image}
         self.world_map = None
