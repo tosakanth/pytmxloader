@@ -9,7 +9,6 @@
      
 - Flashy examples.
 - Maybe a tutorial for nubs. "How do I use Tiled to make a level?"
-- class ResourceLoaderPygame: implement new feature to support flipped tiles (newer versions of tiled support that)
 - maybe introduce a global image cache
 - Integrate an efficient scrollbuffer of some kind (instead of collapse)?
 
@@ -17,6 +16,9 @@
 
 
 ---- Done ----------------------------------------------------------------------
+
+2011-11-03
++ class ResourceLoaderPygame: implement new feature to support flipped tiles (newer versions of tiled support that)
 
 2011-08-04
 + 1. Convert x,y,w,h arguments to rects. (make the camera values use a rect!)
