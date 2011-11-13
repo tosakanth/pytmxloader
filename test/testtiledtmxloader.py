@@ -41,6 +41,16 @@ class MapLoadTestsPygame(unittest.TestCase):
             self.resourceloader.load(world_map)
             num_images = len(self.resourceloader.indexed_tiles)
             self.assertTrue(num_images == 120, "should be 120 tiles, wrong number of tile images loaded: " + str(num_images))
+            
+    def test_load_unkown_version_should_raise_exception(self):
+        try:
+            world_map = tiledtmxloader.tiledtmxloader.TileMapParser().parse_decode("invalid_version.tmx")
+            self.fail("should have raised an exception because of wrong version")
+        except tiledtmxloader.tiledtmxloader.VersionError, e:
+            pass
+        except Exception, ex:
+            self.fail("should be a VersionError exception, not: " + str(ex))
+
     
         
     #--- pygame tests ---#
