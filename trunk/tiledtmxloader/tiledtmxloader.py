@@ -82,9 +82,6 @@ class TileMap(object):
             list of TileLayer
         map_file_name : dict
             file name of the map
-        indexed_tiles : dict
-            dict containing {gid : (offsetx, offsety, surface} if load() was called
-            when drawing just add the offset values to the draw point
         named_layers : dict of string:TledLayer
             dict containing {name : TileLayer}
         named_tile_sets : dict
@@ -558,6 +555,10 @@ def printer(obj, ident=''):
             printer(i, ident + '    ')
 
 #  -----------------------------------------------------------------------------
+
+class VersionError(Exception): pass
+
+#  -----------------------------------------------------------------------------
 class TileMapParser(object):
     u"""
     Allows to parse and decode map files for 'Tiled', a open source map editor
@@ -653,7 +654,7 @@ class TileMapParser(object):
         world_map = TileMap()
         self._set_attributes(world_node, world_map)
         if world_map.version != u"1.0":
-            raise Exception(u'this parser was made for maps of version 1.0, found version %s' % world_map.version)
+            raise VersionError(u'this parser was made for maps of version 1.0, found version %s' % world_map.version)
         for node in self._get_nodes(world_node.childNodes, u'tileset'):
             self._build_tile_set(node, world_map)
         for node in self._get_nodes(world_node.childNodes, u'layer'):
@@ -727,6 +728,7 @@ class TileMapParser(object):
         world_map = self.parse(file_name)
         world_map.decode()
         return world_map
+
 
 #  -----------------------------------------------------------------------------
 
