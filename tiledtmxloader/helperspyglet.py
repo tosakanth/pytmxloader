@@ -67,6 +67,12 @@ import copy
 import tiledtmxloader
 
 #  -----------------------------------------------------------------------------
+
+# [20:31]	bjorn: Of course, for fastest rendering, you would combine the used 
+# tiles into a single texture and set up arrays of vertex and texture coordinates.
+# .. so that the video card can dump the map to the screen without having to 
+# analyze the tile data again and again.
+
 class ResourceLoaderPyglet(tiledtmxloader.AbstractResourceLoader):
     """Loads all tile images and lays them out on a grid.
 
