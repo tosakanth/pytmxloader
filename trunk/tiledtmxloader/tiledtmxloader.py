@@ -50,6 +50,7 @@ import sys
 from xml.dom import minidom, Node
 import StringIO
 import os.path
+import struct
 
 #  -----------------------------------------------------------------------------
 class TileMap(object):
@@ -132,12 +133,15 @@ class TileMap(object):
         self.height = int(self.height)
         self.pixel_width = self.width * self.tilewidth
         self.pixel_height = self.height * self.tileheight
+        
         for layer in self.layers:
             # ISSUE 9
-            if layer.is_object_group:
-                self._convert_obj_group(layer)
-            else:
-                self._convert_layer(layer)
+            if not layer.is_object_group:
+                layer.tilewidth = self.tilewidth
+                layer.tileheight = self.tileheight
+                self.named_layers[layer.name] = layer
+            layer.convert()
+
         for tile_set in self.tile_sets:
             self.named_tile_sets[tile_set.name] = tile_set
             tile_set.spacing = int(tile_set.spacing)
@@ -146,37 +150,13 @@ class TileMap(object):
                 if img.trans:
                     img.trans = (int(img.trans[:2], 16), int(img.trans[2:4], 16), int(img.trans[4:], 16))
 
-    def _convert_layer(self, layer):
-        self.named_layers[layer.name] = layer
-        layer.opacity = float(layer.opacity)
-        layer.x = int(layer.x)
-        layer.y = int(layer.y)
-        layer.width = int(layer.width)
-        layer.height = int(layer.height)
-        layer.pixel_width = layer.width * self.tilewidth
-        layer.pixel_height = layer.height * self.tileheight
-        layer.tilewidth = self.tilewidth
-        layer.tileheight = self.tileheight
-        layer.visible = bool(int(layer.visible))
-
-    def _convert_obj_group(self, obj_group):
-        obj_group.x = int(obj_group.x)
-        obj_group.y = int(obj_group.y)
-        obj_group.width = int(obj_group.width)
-        obj_group.height = int(obj_group.height)
-        for map_obj in obj_group.objects:
-            map_obj.x = int(map_obj.x)
-            map_obj.y = int(map_obj.y)
-            map_obj.width = int(map_obj.width)
-            map_obj.height = int(map_obj.height)
-
     def decode(self):
         u"""
         Decodes the TileLayer encoded_content and saves it in decoded_content.
         """
         for layer in self.layers:
             if not layer.is_object_group:
-                layer.decode()
+                layer.decode(self)
 #  -----------------------------------------------------------------------------
 
 
@@ -268,6 +248,12 @@ class Tile(object):
         properties : dict of name:value
             the propertis set in the editor, name-value pairs
     """
+    
+# [20:22]	DR0ID_: to sum up: there are two use cases, 
+# if the tile element has a child element 'image' then tile is 
+# standalone with its own id and 
+# the other case where a tileset is present then it 
+# referes to the image with that id in the tileset    
 
     def __init__(self):
         self.id = 0
@@ -334,7 +320,7 @@ class TileLayer(object):
         self.is_object_group = False    # ISSUE 9
 
 
-    def decode(self):
+    def decode(self, tile_map):
         u"""
         Converts the contents in a list of integers which are the gid of the used
         tiles. If necessairy it decodes and uncompresses the contents.
@@ -366,16 +352,38 @@ class TileLayer(object):
                     raise Exception(u'unknown data compression %s' %(self.compression))
         else:
             raise Exception(u'no encoded content to decode')
-        for idx in xrange(0, len(s), 4):
-            val = ord(str(s[idx])) | (ord(str(s[idx + 1])) << 8) | \
-                 (ord(str(s[idx + 2])) << 16) | (ord(str(s[idx + 3])) << 24)
-            self.decoded_content.append(val)
+        # TODO: make this even faster by extracting entire lines
+        #       and extend them to the decoded_content?
+
+    # print "-----", time.time()
+    # for i in xrange(10):
+        # self.decoded_content = []
+        
+        # struc = struct.Struct("<I")
+        # struc_unpack_from = struc.unpack_from
+        # self_decoded_content_extend = self.decoded_content.extend
+        # for idx in xrange(0, len(s), 4):
+            # val = struc_unpack_from(s, idx)
+            # self_decoded_content_extend(val)
+
+        struc = struct.Struct("<" + "I" * self.width)
+        struc_unpack_from = struc.unpack_from
+        self_decoded_content_extend = self.decoded_content.extend
+        for idx in xrange(0, len(s), 4 * self.width):
+            val = struc_unpack_from(s, idx)
+            self_decoded_content_extend(val)
+            
+    # print "-----", time.time()
+            
         #print len(self.decoded_content)
         # generate the 2D version
         self._gen_2D()
 
     def _gen_2D(self):
         self.content2D = []
+        
+        # TODO: fill by row possible?
+        
         # generate the needed lists
         for xpos in xrange(self.width):
             self.content2D.append([])
@@ -383,6 +391,8 @@ class TileLayer(object):
         for xpos in xrange(self.width):
             for ypos in xrange(self.height):
                 self.content2D[xpos].append(self.decoded_content[xpos + ypos * self.width])
+                
+        
 
     def pretty_print(self):
         num = 0
@@ -392,6 +402,16 @@ class TileLayer(object):
                 s += str(self.decoded_content[num])
                 num += 1
             print s
+            
+    def convert(self):
+        self.opacity = float(self.opacity)
+        self.x = int(self.x)
+        self.y = int(self.y)
+        self.width = int(self.width)
+        self.height = int(self.height)
+        self.pixel_width = self.width * self.tilewidth
+        self.pixel_height = self.height * self.tileheight
+        self.visible = bool(int(self.visible))
 
     # def get_visible_tile_range(self, xmin, ymin, xmax, ymax):
         # tile_w = self.pixel_width / self.width
@@ -418,7 +438,7 @@ class TileLayer(object):
 #  -----------------------------------------------------------------------------
 
 
-class MapObjectGroup(object):
+class MapObjectGroupLayer(object):
     u"""
     Group of objects on the map.
 
@@ -449,6 +469,16 @@ class MapObjectGroup(object):
         self.properties = {} # {name: value}
         self.is_object_group = True # ISSUE 9
 
+    def convert(self):
+        self.x = int(self.x)
+        self.y = int(self.y)
+        self.width = int(self.width)
+        self.height = int(self.height)
+        for map_obj in self.objects:
+            map_obj.x = int(map_obj.x)
+            map_obj.y = int(map_obj.y)
+            map_obj.width = int(map_obj.width)
+            map_obj.height = int(map_obj.height)
 
 #  -----------------------------------------------------------------------------
 
@@ -664,7 +694,7 @@ class TileMapParser(object):
         return world_map
 
     def _build_object_groups(self, object_group_node, world_map):
-        object_group = MapObjectGroup()
+        object_group = MapObjectGroupLayer()
         self._set_attributes(object_group_node,  object_group)
         for node in self._get_nodes(object_group_node.childNodes, u'object'):
             tiled_object = MapObject()
@@ -726,6 +756,8 @@ class TileMapParser(object):
         :return: instance of TileMap
         """
         world_map = self.parse(file_name)
+        if __debug__:
+            printer(world_map)
         world_map.decode()
         return world_map
 
