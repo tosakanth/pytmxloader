@@ -51,6 +51,7 @@ from xml.dom import minidom, Node
 import StringIO
 import os.path
 import struct
+import array
 
 #  -----------------------------------------------------------------------------
 class TileMap(object):
@@ -133,7 +134,7 @@ class TileMap(object):
         self.height = int(self.height)
         self.pixel_width = self.width * self.tilewidth
         self.pixel_height = self.height * self.tileheight
-        
+
         for layer in self.layers:
             # ISSUE 9
             if not layer.is_object_group:
@@ -248,12 +249,12 @@ class Tile(object):
         properties : dict of name:value
             the propertis set in the editor, name-value pairs
     """
-    
-# [20:22]	DR0ID_: to sum up: there are two use cases, 
-# if the tile element has a child element 'image' then tile is 
-# standalone with its own id and 
-# the other case where a tileset is present then it 
-# referes to the image with that id in the tileset    
+
+# [20:22]	DR0ID_: to sum up: there are two use cases,
+# if the tile element has a child element 'image' then tile is
+# standalone with its own id and
+# the other case where a tileset is present then it
+# referes to the image with that id in the tileset
 
     def __init__(self):
         self.id = 0
@@ -287,13 +288,13 @@ class TileLayer(object):
             list of graphics id going through the map::
 
                 e.g [1, 1, 1, ]
-                where decoded_content[0] is (0,0)
-                      decoded_content[1] is (1,0)
+                where decoded_content[0]   is (0,0)
+                      decoded_content[1]   is (1,0)
                       ...
-                      decoded_content[1] is (width,0)
-                      decoded_content[1] is (0,1)
+                      decoded_content[w]   is (width,0)
+                      decoded_content[w+1] is (0,1)
                       ...
-                      decoded_content[1] is (width,height)
+                      decoded_content[w * h]  is (width,height)
 
                 usage: graphics id = decoded_content[tile_x + tile_y * width]
         content2D : list
@@ -352,19 +353,6 @@ class TileLayer(object):
                     raise Exception(u'unknown data compression %s' %(self.compression))
         else:
             raise Exception(u'no encoded content to decode')
-        # TODO: make this even faster by extracting entire lines
-        #       and extend them to the decoded_content?
-
-    # print "-----", time.time()
-    # for i in xrange(10):
-        # self.decoded_content = []
-        
-        # struc = struct.Struct("<I")
-        # struc_unpack_from = struc.unpack_from
-        # self_decoded_content_extend = self.decoded_content.extend
-        # for idx in xrange(0, len(s), 4):
-            # val = struc_unpack_from(s, idx)
-            # self_decoded_content_extend(val)
 
         struc = struct.Struct("<" + "I" * self.width)
         struc_unpack_from = struc.unpack_from
@@ -372,27 +360,23 @@ class TileLayer(object):
         for idx in xrange(0, len(s), 4 * self.width):
             val = struc_unpack_from(s, idx)
             self_decoded_content_extend(val)
-            
-    # print "-----", time.time()
-            
-        #print len(self.decoded_content)
-        # generate the 2D version
+
+        arr = array.array('I')
+        arr.fromlist(self.decoded_content)
+        self.decoded_content = arr
+
+        # TODO: generate property grid here??
+
         self._gen_2D()
 
     def _gen_2D(self):
         self.content2D = []
-        
-        # TODO: fill by row possible?
-        
-        # generate the needed lists
+
+        # generate the needed lists and fill them
         for xpos in xrange(self.width):
-            self.content2D.append([])
-        # fill them
-        for xpos in xrange(self.width):
+            self.content2D.append(array.array('I'))
             for ypos in xrange(self.height):
                 self.content2D[xpos].append(self.decoded_content[xpos + ypos * self.width])
-                
-        
 
     def pretty_print(self):
         num = 0
@@ -402,7 +386,7 @@ class TileLayer(object):
                 s += str(self.decoded_content[num])
                 num += 1
             print s
-            
+
     def convert(self):
         self.opacity = float(self.opacity)
         self.x = int(self.x)
@@ -765,6 +749,10 @@ class TileMapParser(object):
 #  -----------------------------------------------------------------------------
 
 class AbstractResourceLoader(object):
+    """
+    Abstract base class for the resource loader.
+
+    """
 
     FLIP_X = 1<<31
     FLIP_Y = 1<<30
