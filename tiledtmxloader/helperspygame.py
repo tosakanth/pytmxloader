@@ -1,15 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-u"""
+"""
+
 TileMap loader for python for Tiled, a generic tile map editor
 from http://mapeditor.org/ .
 It loads the \*.tmx files produced by Tiled.
 
+This is the code that helps using the tmx files using pygame. In this
+module there is a pygame specific loader and renderer.
+
+
+TODO: mini example and usage of the classes from this module
+TODO: link to homepage
+TODO: examples
 
 """
 
-# Versioning scheme based on: 
+# Versioning scheme based on:
 # http://en.wikipedia.org/wiki/Versioning#Designating_development_stage
 #
 #   +-- api change, probably incompatible with older versions
@@ -59,8 +67,16 @@ import tiledtmxloader
 
 class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
     """
-    Resource loader for pygame. Loads the images as Surfaces and saves them in
+    Resource loader for pygame. Loads the images as pygame.Surfaces and saves them in
     the variable indexed_tiles.
+
+
+    Example::
+
+        res_loader = ResourceLoaderPygame()
+        # tile_map loaded the the TileMapParser.parse() method
+        res_loader.load(tile_map)
+
     """
 
     def __init__(self):
@@ -68,23 +84,25 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
 
     def load(self, tile_map):
         tiledtmxloader.AbstractResourceLoader.load(self, tile_map)
+        self._img_cache.clear() # delete the original images from memory, they are all saved as tiles
         # ISSUE 17: flipped tiles
         for layer in self.world_map.layers:
-            for gid in layer.decoded_content:
-                if gid not in self.indexed_tiles:
-                    if gid & self.FLIP_X or gid & self.FLIP_Y:
-                        image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
-                        offx, offy, img = self.indexed_tiles[image_gid]
-                        img = img.copy()
-                        img = pygame.transform.flip(img, bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
-                        self.indexed_tiles[gid] = (offx, offy, img)
+            if not layer.is_object_group:
+                for gid in layer.decoded_content:
+                    if gid not in self.indexed_tiles:
+                        if gid & self.FLIP_X or gid & self.FLIP_Y:
+                            image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
+                            offx, offy, img = self.indexed_tiles[image_gid]
+                            img = img.copy()
+                            img = pygame.transform.flip(img, bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
+                            self.indexed_tiles[gid] = (offx, offy, img)
 
     def _load_image_parts(self, filename, margin, spacing, \
                           tile_width, tile_height, colorkey=None): #-> [images]
         source_img = self._load_image(filename, colorkey)
         width, height = source_img.get_size()
         # ISSUE 16
-        # if the image size does not match a multiple of tile_width or 
+        # if the image size does not match a multiple of tile_width or
         # tile_height it will mess up the number of tiles resulting in
         # wrong GID's for the tiles
         width = (width // tile_width) * tile_width
@@ -142,12 +160,36 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
 
 #  -----------------------------------------------------------------------------
 #  -----------------------------------------------------------------------------
-
+class SpriteLayerNotCompatibleError(Exception): pass
 
 class SpriteLayer(object):
+    """
+    The SpriteLayer class. This class is used by the RendererPygame.
+
+
+    """
 
     class Sprite(object):
+        """
+        The Sprite class used by the SpriteLayer class and the RendererPygame.
+
+        """
         def __init__(self, image, rect, source_rect=None, flags=0, key=None):
+            """
+            Constructor.
+            :Parameters:
+                image : pygame.Surface
+                    the image of this sprite
+                rect : pygame.Rect
+                    the rect used when drawing
+                source_rect : pygame.Rect
+                    source area rect, defaults to None
+                flags : int
+                    flags for the blit method, defaults to 0
+                key : any
+                    used internally for collapsing sprites
+
+            """
             self.image = image
             # TODO: dont use a rect for position
             self.rect = rect # blit rect
@@ -156,19 +198,34 @@ class SpriteLayer(object):
             self.is_flat = False
             self.z = 0
             self.key = key
-            
+
         def get_draw_cond(self):
+            """
+            Defines if the sprite lays on the floor or if it is up-right.
+
+            :returns:
+                The bottom y coordinate so the sprites can be sorted in right
+                draw order.
+            """
             if self.is_flat:
                 return self.rect.top + self.z
             else:
                 return self.rect.bottom
 
     def __init__(self, tile_layer_idx, resource_loader):
+        """
+
+        :Parameters:
+            tile_layer_idx : int
+                Index of the tile layer to build upon
+            resource_loader : ResourceLoaderPygame
+                Instance of the ResourceLoaderPygame class which has loaded the resouces
+        """
         self._resource_loader = resource_loader
         _world_map = self._resource_loader.world_map
         self.layer_idx = tile_layer_idx
         _layer = _world_map.layers[tile_layer_idx]
-        
+
         self.tilewidth = _world_map.tilewidth
         self.tileheight = _world_map.tileheight
         self.num_tiles_x = _world_map.width
@@ -178,7 +235,7 @@ class SpriteLayer(object):
 
 
         self._level = 1 # start with an invalid level
-        
+
         self.paralax_factor_x = 1.0
         self.paralax_factor_y = 1.0
         self.sprites = []
@@ -186,14 +243,14 @@ class SpriteLayer(object):
         self.visible = _layer.visible
         self.bottom_margin = 0
         self._bottom_margin = 0
-        
-        
+
+
         # init data to default
         # self.content2D = []
         # generate the needed lists
         # for xpos in xrange(self.num_tiles_x):
             # self.content2D.append([None] * self.num_tiles_y)
-            
+
         self.content2D = [None] * self.num_tiles_y
         for ypos in xrange(self.num_tiles_y):
             self.content2D[ypos] = [None] * self.num_tiles_x
@@ -218,24 +275,34 @@ class SpriteLayer(object):
 
                     self.content2D[ypos_new][xpos_new] = sprite
         self.bottom_margin = self._bottom_margin
-        if __debug__: 
+        if __debug__:
             print '%s: Sprite Cache hits: %d' % \
                                 (self.__class__.__name__, _img_cache["hits"])
         del _img_cache
 
     def get_collapse_level(self):
+        """
+        The level of collapsing.
+
+        :returns:
+            The collapse level.
+        """
         return self._level
 
     # TODO: test scale
     @staticmethod
     def scale(layer_orig, scale_w, scale_h): # -> sprite_layer
         """
-        Scales a layer and returns it.
-        
-        scale_w, scale_h: float (0, ...]
+        Scales a layer and returns a new, scaled SpriteLayer.
+
+        :Parameters:
+            scale_w : float
+                Width scale factor in range (0, ...]
+            scale_h : float
+                Height scale factor in range (0, ...]
         """
         layer = SpriteLayer(layer_orig.layer_idx, layer_orig._resource_loader)
-        
+
         layer.tilewidth = layer_orig.tilewidth * scale_w
         layer.tileheight = layer_orig.tileheight * scale_h
         layer.num_tiles_x = layer_orig.width * scale_w
@@ -245,13 +312,13 @@ class SpriteLayer(object):
 
 
         layer._level = layer_orig._level
-        
+
         layer.paralax_factor_x = layer_orig.paralax_factor_x
         layer.paralax_factor_y = layer_orig.paralax_factor_y
         layer.sprites = layer_orig.sprites
         layer.is_object_group = layer_orig.is_object_group
         layer.visible = layer_orig.visible
-        
+
         for xidx, row in enumerate(layer_orig.content2D):
             for yidx, sprite in enumerate(row):
                 w, h = sprite.image.get_size()
@@ -262,12 +329,24 @@ class SpriteLayer(object):
                 x, y = sprite.rect.topleft
                 rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
                 layer.content2D[yidx][xidx] = SpriteLayer.Sprite(image, rect)
-                
+
         return layer
 
     # TODO: implement merge
     @staticmethod
     def merge(layers): # -> sprite_layer
+        """
+        Merges multiple Sprite layers into one. Only SpriteLayers are supported.
+        All layers need to be equal in tile size, number of tiles and layer
+        position. Otherwise a SpriteLayerNotCompatibleError is raised.
+
+        :Parameters:
+            layers : list
+                The SpriteLayer to be merged
+
+        :returns: new SpriteLayer with merged tiles
+
+        """
         tile_width = None
         tile_height = None
         num_tiles_x = None
@@ -275,13 +354,13 @@ class SpriteLayer(object):
         position_x = None
         position_y = None
         new_layer = None
-        
+
         for layer in layers:
-            if layer.is_object_group:
-                raise Exception("not a SpriteLayer")
-                
+            # if layer.is_object_group:
+                # raise Exception("not a SpriteLayer")
+
             assert isinstance(layer, SpriteLayer), "layer is not an instance of SpriteLayer"
-                
+
             # just use the values from first layer
             tile_width = tile_width if tile_width else layer.tile_width
             tile_height = tile_height if tile_height else layer.tile_height
@@ -289,21 +368,21 @@ class SpriteLayer(object):
             num_tiles_y = num_tiles_y if num_tiles_y else layer.num_tiles_y
             position_x = position_x if position_x else layer.position_x
             position_y = position_y if position_y else layer.position_y
-            
+
             # check they are equal for all layers
             if layer.tile_width != tile_width:
-                raise Exception("layers do not have same tile_width")
+                raise SpriteLayerNotCompatibleError("layers do not have same tile_width")
             if layer.tile_height != tile_height:
-                raise Exception("layers do not have same tile_height")
+                raise SpriteLayerNotCompatibleError("layers do not have same tile_height")
             if layer.num_tiles_x != num_tiles_x:
-                raise Exception("layers do not have same number of tiles in x direction")
+                raise SpriteLayerNotCompatibleError("layers do not have same number of tiles in x direction")
             if layer.num_tiles_y != num_tiles_y:
-                raise Exception("layers do not have same number of tiles in y direction")
+                raise SpriteLayerNotCompatibleError("layers do not have same number of tiles in y direction")
             if layer.position_x != position_x:
-                raise Exception("layers are not at same position in x")
+                raise SpriteLayerNotCompatibleError("layers are not at same position in x")
             if layer.position_y != position_y:
-                raise Exception("layers are not at same position in y")
-                
+                raise SpriteLayerNotCompatibleError("layers are not at same position in y")
+
             if new_layer is None:
                 new_layer = SpriteLayer(-2, layer._resource_loader)
 
@@ -319,14 +398,31 @@ class SpriteLayer(object):
                             else:
                                 new_sprite = sprite
                             new_layer.content2D[ypos_new][xpos_new] = new_sprite
-                            
-                            
+
+
 
         return new_layer
-        
+
 
     @staticmethod
     def collapse(layer):
+        """
+        Makes 1 tile out of 4. The idea behind is that fewer tiles
+        are faster to render, but that is not always true.
+        Grouping them together into one bigger sprite is one way to get fewer
+        sprites.
+
+        :not: This only works for static layers without any dynamic sprites.
+
+        :note: use with caution
+
+        :Parameters:
+            laser : SpriteLayer
+                The layer to collapse
+
+        :returns: new SpriteLayer with fewer sprites but double the size.
+
+        """
 
         #   +    0'        1'        2'
         #        0    1    2    3    4
@@ -343,7 +439,7 @@ class SpriteLayer(object):
         level = 2
         if layer.is_object_group:
             return layer
-            
+
         new_tilewidth = layer.tilewidth * level
         new_tileheight = layer.tileheight * level
         new_num_tiles_x = int(layer.num_tiles_x / level)
@@ -355,10 +451,10 @@ class SpriteLayer(object):
 
         # print "old size", layer.num_tiles_x, layer.num_tiles_y
         # print "new size", new_num_tiles_x, new_num_tiles_y
-        
+
         _content2D = [None] * new_num_tiles_y
         # generate the needed lists
-            
+
         for ypos in xrange(new_num_tiles_y):
             _content2D[ypos] = [None] * new_num_tiles_x
 
@@ -387,14 +483,31 @@ class SpriteLayer(object):
 
         # HACK:
         new_layer._level = layer._level * 2
-            
-        if __debug__ and level > 1: 
+
+        if __debug__ and level > 1:
             print '%s: Sprite Cache hits: %d' % ("collapse", _img_cache["hits"])
         return new_layer
 
     @staticmethod
     def _get_list_of_neighbour_coord(xpos_new, ypos_new, level, \
                                                     num_tiles_x, num_tiles_y):
+        """
+        Finds the neighbours of a tile and returns them
+
+        :Parameters:
+            xpos_new : int
+                x position
+            ypos_new : int
+                y position
+            level : int
+                collapse level because this uses original tiles
+            num_tiles_x : int
+                number of tiles in x direction
+            num_tiles_y : int
+                number of tiles in y direction
+        :Returns:
+            list of coordinates of the neighbour tiles
+        """
         xpos = xpos_new * level
         ypos = ypos_new * level
 
@@ -407,16 +520,29 @@ class SpriteLayer(object):
 
     @staticmethod
     def _union_sprites(sprites, key, _img_cache):
+        """
+        Unions sprites into one big one.
+
+        :Parameters:
+            sprites : list
+                list of sprites to union
+            key : iterable
+                key of the sprite, internal use only
+            _img_cache : dict
+                cache dict
+        :Returns:
+            new Sprite that unites all the given sprites.
+        """
         key = tuple(key)
-        
-        # dont copy to a new image if only one sprite is in sprites 
+
+        # dont copy to a new image if only one sprite is in sprites
         # (reduce memory usage)
         # NOTE: this messes up the cache hits (only on non-collapsed maps)
         if len(sprites) == 1:
             sprite = sprites[0]
             sprite.key = key
             return sprite
-            
+
         # combine found sprites into one sprite
         rect = sprites[0].rect.unionall(sprites)
 
@@ -431,17 +557,32 @@ class SpriteLayer(object):
             x, y = rect.topleft
             for spr in sprites:
                 image.blit(spr.image, spr.rect.move(-x, -y))
-                
+
             _img_cache[key] = image
 
         return SpriteLayer.Sprite(image, rect, key=key)
 
     @staticmethod
     def _get_sprites_fromt_tiled_layer(coords, layer, indexed_tiles):
+        """
+        Get the sprites at the given coordinates from a tiled layer.
+
+        :Parameters:
+            coords : list
+                list of coordinates tuples
+            layer : TiledLayer
+                layer to extract the sprites from
+            indexed_tiles : dict
+                indexed tiles list loaded by the resource loader.
+
+        :Returns:
+            (keys, sprites) the new keys and sprites
+
+        """
         sprites = []
         key = []
         for xpos, ypos in coords:
-            ## ISSUE 14: maps was displayed only sqared because wrong 
+            ## ISSUE 14: maps was displayed only sqared because wrong
             ## boundary checks
             if xpos >= len(layer.content2D) or \
                                 ypos >= len(layer.content2D[xpos]):
@@ -463,7 +604,22 @@ class SpriteLayer(object):
         return key, sprites
 
     @staticmethod
-    def _get_sprite_from(coords, layer, _img_cache, indexed_tiles=None):
+    def _get_sprite_from(coords, layer, _img_cache):
+        """
+        Get one sprite for the given coordinates on the given layer.
+
+        :Parameters:
+            coords : list
+                tuples of coordinates (x, y)
+            layer : SpriteLayer
+                the layer to get the united sprite from
+            _img_cache : dict
+                dict for caching, internal use only
+
+        :returns:
+            a single sprite, uniting all given sprites on the fiven coordinates.
+
+        """
         sprites = []
         key = []
         for xpos, ypos in coords:
@@ -479,104 +635,258 @@ class SpriteLayer(object):
                 sprites.append(sprite)
             else:
                 key.append(-1)
-        
+
         if sprites:
             sprite = SpriteLayer._union_sprites(sprites, key, _img_cache)
-            
+
             if __debug__:
                 x, y = sprite.rect.topleft
                 pygame.draw.rect(sprite.image, (255, 0, 0), \
                                     sprite.rect.move(-x, -y), \
                                     layer.get_collapse_level())
-                
+
             del sprites
             return sprite
-            
+
         return None
 
     def add_sprite(self, sprite):
+        """
+        Add dynamic sprite to this layer.
+
+        :Parameters:
+            sprite : SpriteLayer.Sprite
+                sprite to add
+        """
         self.sprites.append(sprite)
         if sprite.rect.height > self.bottom_margin:
             self.bottom_margin = sprite.rect.height
 
     def add_sprites(self, sprites):
+        """
+        Add multiple dynamic sprites to this layer.
+
+        :Parameters:
+            sprites : list
+                list of SpriteLayer.Sprite to add
+        """
         for sprite in sprites:
             self.add_sprite(sprite)
 
     def remove_sprite(self, sprite):
+        """
+        Removes a dynamic sprite from this layer.
+
+        :Parameters:
+            sprite : SpriteLayer.Sprite
+                sprite to remove
+        """
         if sprite in self.sprites:
             self.sprites.remove(sprite)
-        
+
         self.bottom_margin = self._bottom_margin
         for spr in self.sprites:
             if spr.rect.height > self.bottom_margin:
                 self.bottom_margin = spr.rect.height
 
     def remove_sprites(self, sprites):
+        """
+        Remove multiple sprites at once.
+
+        :Parameters:
+            sprites : list
+                list of SpriteLayer.Sprite to remove
+
+        """
         for sprite in sprites:
             self.remove_sprite(sprite)
 
     def contains_sprite(self, sprite):
+        """
+        Check if the given sprites is already in this layer.
+
+        :Parameters:
+            sprite : SpriteLayer.Sprite
+                sprite to check
+
+        :Returns:
+            bool, true if sprite is in this layer
+        """
         if sprite in self.sprites:
             return True
         return False
 
     def has_sprites(self):
+        """
+        Checks if this layer has dynamic sprites at all.
+
+        :Returns: bool, true if it contains at least 1 dynamic sprite.
+        """
         return (len(self.sprites) > 0)
 
     def set_layer_paralax_factor(self, factor_x=1.0, factor_y=None):
+        """
+        Set the paralax factor. This is for paralax scrolling this layer.
+        Values x < 0.0 will make the layer scroll in opposite direction
+        Value x == 0.0 makes the layer fix to the screen (wont scroll)
+        Values 0.0 < x < 1.0 will make scroll the layer slower.
+        Value x == 1.0 is default and make scroll the layer normal.
+        Values x > 1.0 make scroll the layer faster than normal
+
+        :Parameters:
+            factor_x : float
+                Paralax factor in x direction. Defaults to 1.0
+            factor_y : float
+                Paralax factor in y direction. If this is None then it will have
+                the same value as the factor_x argument.
+        """
         self.paralax_factor_x = factor_x
         if factor_y:
             self.paralax_factor_y = factor_y
         else:
             self.paralax_factor_y = factor_x
-        
+
     def get_layer_paralax_factor_x(self):
+        """
+        Retrieve the current x paralax factor.
+
+        :Returns:
+            returns the current x paralax factor.
+        """
         return self.paralax_factor_x
 
     def get_layer_paralax_factor_y(self):
+        """
+        Retrieve the current y paralax factor.
+
+        :Returns:
+            returns the current y paralax factor.
+        """
         return self.paralax_factor_y
 
 #  -----------------------------------------------------------------------------
 
-class RendererPygame(object):
+def get_layers_from_map(resource_loader):
+    """
+    Creates SpriteLayers out of the map.
 
-    def __init__(self, resource_loader):
-        self._resource_loader = resource_loader
+    :Parameters:
+        resource_loader : ResourceLoaderPygame
+            a resource loader instance
+
+    :Returns: list of SpriteLayers
+    """
+    layers = []
+    for idx, layer in enumerate(resource_loader.world_map.layers):
+        layers.append(get_layer_at_index(idx, resource_loader))
+    return layers
+
+def get_layer_at_index(layer_idx, resource_loader):
+    """
+    Creates one SpriteLayer from index out of the map.
+
+    :Parameters:
+        layer_idx : int
+            Index of the layer to create.
+        resource_loader : ResourceLoaderPygame
+            a resource loader instance
+
+    :Returns: a SpriteLayer instance
+
+    """
+    layer = resource_loader.world_map.layers[layer_idx]
+    if layer.is_object_group:
+        return layer
+    return SpriteLayer(layer_idx, resource_loader)
+
+#  -----------------------------------------------------------------------------
+
+class RendererPygame(object):
+    """
+    A renderer for pygame. Should be fast enough for most purposes.
+
+    Example::
+
+        # init
+        sprite_layers = get_layers_from_map(resources)
+        renderer = RendererPygame()
+
+        # in main loop
+        while running:
+
+            # move camera
+            renderer.set_camera_position(x, y)
+
+            # draw layers
+            for sprite_layer in sprite_layers:
+                renderer.render_layer(screen, sprite_layer, clip_sprites)
+
+    """
+
+    def __init__(self):
+        """
+        Constructor.
+
+        """
         self._cam_rect = pygame.Rect(0, 0, 10, 10)
         self._margin = (0, 0, 0, 0) # left, right, top, bottom
 
-    def get_layers_from_map(self):
-        layers = []
-        for idx, layer in enumerate(self._resource_loader.world_map.layers):
-            layers.append(self.get_layer_at_index(idx))
-        return layers
-
-    def get_layer_at_index(self, layer_idx):
-        layer = self._resource_loader.world_map.layers[layer_idx]
-        if layer.is_object_group:
-            return layer
-        return SpriteLayer(layer_idx, self._resource_loader)
-
     def set_camera_position(self, world_pos_x, world_pos_y, alignment='center'):
+        """
+        Set the camera position in the world.
+
+        :Parameters:
+            world_pos_x : int
+                position in x in world coordinates
+            world_pos_y : int
+                position in y in world coordinates
+            alignment : string
+                defines to which part of the cam rect the position belongs,
+                can be any pygame.Rect attribute: 'center', 'topleft', 'topright', ...
+        """
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
         self._render_cam_rect.center = self._cam_rect.center
-        
+
     def set_camera_position_and_size(self, world_pos_x, world_pos_y, \
                                    width, height, alignment='center'):
+        """
+        Set the camera position and size in the world.
+
+        :Parameters:
+            world_pos_x : int
+                Position in x in world coordinates.
+            world_pos_y : int
+                Position in y in world coordinates.
+            witdh : int
+                With of the camera rect (the rendered area).
+            height : int
+                The height of the camera rect (the rendered area).
+            alignment : string
+                Defines to which part of the cam rect the position belongs,
+                can be any pygame.Rect attribute: 'center', 'topleft', 'topright', ...
+
+        """
         self._cam_rect.width = width
         self._cam_rect.height = height
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
         self.set_camera_margin(*self._margin)
-        
+
     def set_camera_rect(self, cam_rect_world_coord):
+        """
+        Set the camera position and size using a rect in world coordinates.
+
+        :Parameters:
+            cam_rect_world_coord : pygame.Rect
+                A rect describing the cameras position and size in the world.
+
+        """
         self._cam_rect = cam_rect_world_coord
         self.set_camera_margin(*self._margin)
-        
+
     def set_camera_margin(self, margin_left, margin_right, margin_top, margin_bottom):
         """
         Set the margin around the camera (in pixels).
-        
+
         :Parameters:
             margin_left : int
                 number of pixels of the left side marging
@@ -586,7 +896,7 @@ class RendererPygame(object):
                 number of pixels of the top side marging
             margin_bottom : int
                 number of pixels of the left bottom marging
-        
+
         """
         self._margin = (margin_left, margin_right, margin_top, margin_bottom)
         self._render_cam_rect = pygame.Rect(self._cam_rect)
@@ -598,25 +908,25 @@ class RendererPygame(object):
         self._render_cam_rect.top = self._render_cam_rect.top - margin_top
         # adjust bottom margin
         self._render_cam_rect.height = self._render_cam_rect.height + margin_top + margin_bottom
-        
+
 
     def render_layer(self, surf, layer, clip_sprites=True, \
                                     sort_key=lambda spr: spr.get_draw_cond()):
         """
         Renders a layer onto the given surface.
-        
+
         :Parameters:
             surf : Surface
                 Surface to render onto.
             layer : SpriteLayer
                 The layer to render. Invisible layers will be skipped.
             clip_sprites : boolean
-                Clip the sprites of this layer to only draw the ones
+                Optional, defaults to True. Clip the sprites of this layer to only draw the ones
                 intersecting the visible part of the world.
             sort_key : function
-                The sort function for the parameter 'key' of the sort 
+                Optional: The sort function for the parameter 'key' of the sort
                 method of the list.
-        
+
         """
         if layer.visible:
 
@@ -656,7 +966,7 @@ class RendererPygame(object):
             right = right if right < layer.num_tiles_x else layer.num_tiles_x
             top = top if top > 0 else 0
             bottom = bottom if bottom < layer.num_tiles_y else layer.num_tiles_y
-            
+
             # print '???', layer.num_tiles_x, layer.num_tiles_y, left, right, top, bottom, cam_rect
 
             # sprites
@@ -678,11 +988,11 @@ class RendererPygame(object):
                         sprites.sort(key=sort_key)
                     sprite = sprites[0]
                     len_sprites = len(sprites)
-                     
+
 
             # render
             for ypos in range(top, bottom):
-                # draw sprites in this layer 
+                # draw sprites in this layer
                 # (skip the ones outside visible area/map)
                 y = ypos + 1
                 while spr_idx < len_sprites and sprite.get_draw_cond() <= \
@@ -706,18 +1016,29 @@ class RendererPygame(object):
                                     tile_sprite.source_rect, \
                                     tile_sprite.flags)
 
-    def pick_layer(self, layer, screen_x, screen_y): 
+    def pick_layer(self, layer, screen_x, screen_y):
         """
-        Returns the sprite at the given screen position or None regardless of 
+        Returns the sprite at the given screen position or None regardless of
         the layers visibility.
+
+        :Note: This does not work wir object group layers.
+
+        :Parameters:
+            layer : SpriteLayer
+                the layer to pick from
+            screen_x : int
+                The screen position in x direction.
+            screen_y : int
+                The screen position in y direction.
+
+        :Returns:
+            None if there is no sprite or the sprite (SpriteLayer.Sprite instance).
         """
         if layer.is_object_group:
             pass
         else:
             world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
-            # world_pos_x = screen_x + self._render_cam_rect.x * layer.paralax_factor_x
-            # world_pos_y = screen_y + self._render_cam_rect.y * layer.paralax_factor_y
-            
+
             tile_x = int(world_pos_x / layer.tilewidth)
             tile_y = int(world_pos_y / layer.tileheight)
 
@@ -726,35 +1047,59 @@ class RendererPygame(object):
                 if sprite:
                     return sprite
         return None
-            
+
     def pick_layers_sprites(self, layer, screen_x, screen_y):
         """
         Returns the sprites at the given screen positions or an empty list.
         The sprites are the same order as in the layers.sprites list.
+
+        :Note: This does not work wir object group layers.
+
+        :Parameters:
+            layer : SpriteLayer
+                the layer to pick from
+            screen_x : int
+                The screen position in x direction.
+            screen_y : int
+                The screen position in y direction.
+
+        :Returns:
+            A list of sprites or an empty list.
         """
         if layer.is_object_group:
             pass
         else:
             world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
-            
+
             r = pygame.Rect(world_pos_x, world_pos_y, 1, 1)
             indices = r.collidelistall(layer.sprites)
             return [layer.sprites[idx] for idx in indices]
         return []
-        
+
     def get_world_pos(self, layer, screen_x, screen_y):
         """
-            returns the world coordinates for the given screen location and layer
-            
-            Note: this is important so one can check which entity is there in the model
-                    (knowing which sprite is there does not help much)
-        
+        Returns the world coordinates for the given screen location and layer.
+
+        :Note: this is important so one can check which entity is there in the model
+                (knowing which sprite is there does not help much)
+
+        :Parameters:
+            layer : SpriteLayer
+                the layer to pick from
+            screen_x : int
+                The screen position in x direction.
+            screen_y : int
+                The screen position in y direction.
+
+        :Returns:
+            Tuple of world coordinates: (world_x, world_y)
+
         """
         # TODO: also use layer.x and layer.y offset
         return (screen_x + self._render_cam_rect.x * layer.paralax_factor_x, screen_y + self._render_cam_rect.y * layer.paralax_factor_y)
 
-        
-        
+
+
 #  -----------------------------------------------------------------------------
 
 
@@ -787,7 +1132,7 @@ def demo_pygame(file_name):
 
 
 
-    # parser the map (it is done here to initialize the 
+    # parser the map (it is done here to initialize the
     # window the same size as the map if it is small enough)
     world_map = tiledtmxloader.TileMapParser().parse_decode(file_name)
 
@@ -806,7 +1151,7 @@ def demo_pygame(file_name):
 
     # prepare map rendering
     assert world_map.orientation == "orthogonal"
-    renderer = RendererPygame(resources)
+    renderer = RendererPygame()
 
     # cam_offset is for scrolling
     cam_world_pos_x = 0
@@ -853,7 +1198,7 @@ def demo_pygame(file_name):
     renderer_render_layer = renderer.render_layer
     renderer_set_camera_position = renderer.set_camera_position
     pygame_display_flip = pygame.display.flip
-    sprite_layers = renderer.get_layers_from_map()
+    sprite_layers = get_layers_from_map(resources)
     renderer.set_camera_position_and_size(cam_world_pos_x, cam_world_pos_y, \
                                         screen_width, screen_height)
 
@@ -918,7 +1263,7 @@ def demo_pygame(file_name):
                             # TODO: better interface
                             render_layer = sprite_layers[idx]
                             sprite_layers[idx] = \
-                                                renderer.get_layer_at_index(idx)
+                                                renderer.get_layer_at_index(idx, resources)
                             print "layer", idx, "RESET!"
                         elif event.mod & pygame.KMOD_ALT:
                             # hero sprites
@@ -958,7 +1303,7 @@ def demo_pygame(file_name):
                                        layer.get_layer_paralax_factor_x() - 0.1)
                         print "reduced paralax factox on layer", pressed_layer,\
                                     " to:", layer.get_layer_paralax_factor_x()
-                    
+
             elif event.type == pygame.USEREVENT:
                 t = 0
                 print clock.get_fps()
@@ -1005,7 +1350,7 @@ def demo_pygame(file_name):
 
         # clear screen, might be left out if every pixel is redrawn anyway
         screen.fill((0,0,0))
-        
+
         sprites = []
         for layer in sprite_layers:
             spr = renderer.pick_layer(layer, *pygame.mouse.get_pos())
@@ -1014,7 +1359,7 @@ def demo_pygame(file_name):
         for idx, spr in enumerate(sprites):
             dud = my_sprites[2]
             dud.rect.topleft = spr.rect.topleft
-            
+
         # render the map
         # TODO: manage render layers
         for sprite_layer in sprite_layers:
@@ -1034,8 +1379,8 @@ def demo_pygame(file_name):
         for idx, spr in enumerate(sprites):
             screen.blit(spr.image, (idx * spr.rect.w, screen.get_size()[1] - spr.rect.h))
             # print '>>>>>', dud.rect.topleft
-            
-            
+
+
         pygame_display_flip()
 
 def _draw_obj_group(screen, obj_group, cam_world_pos_x, cam_world_pos_y, font):
@@ -1057,7 +1402,7 @@ def _draw_obj_group(screen, obj_group, cam_world_pos_x, cam_world_pos_y, font):
             pygame.draw.rect(screen, (255, 255, 0), r, 1)
             text_img = font.render(map_obj.name, 1, (255, 255, 0))
             screen.blit(text_img, r.move(1, 2))
-    
+
 #  -----------------------------------------------------------------------------
 # TODO:
  # - pyglet demo: redo same as for pygame demo, better rendering
