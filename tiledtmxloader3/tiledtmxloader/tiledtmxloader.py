@@ -738,8 +738,6 @@ class TileMapParser(object):
         :return: instance of TileMap
         """
         world_map = self.parse(file_name)
-        if __debug__:
-            printer(world_map)
         world_map.decode()
         return world_map
 
