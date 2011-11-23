@@ -41,8 +41,6 @@ if 0 == len(logging.root.handlers):
 _LOGGER = logging.getLogger('tiledtmxloader')
 if __debug__:
     _LOGGER.debug('%s loading ...' % (__name__))
-    import time
-    _START_TIME = time.time()
 #  -----------------------------------------------------------------------------
 
 
@@ -882,6 +880,3 @@ class AbstractResourceLoader(object):
 
 #  -----------------------------------------------------------------------------
 
-if __debug__:
-    _DELTA = time.time() - _START_TIME
-    _LOGGER.debug('%s loaded: %fs' % (__name__, _DELTA))
