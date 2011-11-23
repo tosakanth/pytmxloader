@@ -139,7 +139,13 @@ def shall_skip(module):
     Check if we want to skip this module.
     """
     # skip it, if there is nothing (or just \n or \r\n) in the file
-    return os.path.getsize(module) < 3
+    if os.path.getsize(module) < 3:
+        return True
+    
+    if module.find("setup.py") > -1 or module.find(os.sep + "dist" + os.sep) > -1:
+        return True
+        
+    return False
 
 def recurse_tree(path, excludes, opts):
     """

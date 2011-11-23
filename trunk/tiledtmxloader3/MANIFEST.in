@@ -1,5 +1,5 @@
-recursive-include doc/build/html *
-prune doc/build/html/.doctrees
-exclude doc/build/html/.buildinfo
-exclude test
+recursive-include test *
+recursive-include doc/html *
+prune doc/html/.doctrees
+exclude doc/html/.buildinfo
 include LICENSE.txt

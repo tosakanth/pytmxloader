@@ -19,7 +19,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.curdir)))
 print("looking for module to autodoc in:", sys.path[0])
 import generate_modules
-generate_modules.main("-n 'tiledtmxloader' -t -d . -f ..\\..\\".split())
+generate_modules.main("-n 'tiledtmxloader' -t -d . -f ../../ ../../setup.py ../../dist".split())
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.curdir, os.pardir, os.pardir)))
 print sys.path
