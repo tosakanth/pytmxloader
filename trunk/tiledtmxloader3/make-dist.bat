@@ -1,7 +1,8 @@
 rem del /F /S /Q dist
 del /F /S /Q MANIFEST
-del /F /Q *.pyc
-del /F /Q *.pyo
+del /F /Q /S *.pyc
+del /F /Q /S *.pyo
+del /F /Q /S doc/html
 
 cd doc
 call make.bat html

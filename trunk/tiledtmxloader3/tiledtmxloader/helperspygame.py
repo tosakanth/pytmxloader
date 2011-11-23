@@ -42,12 +42,6 @@ __revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
-if __debug__:
-    print __version__
-    import sys
-    sys.stdout.write(u'%s loading ... \n' % (__name__))
-    import time
-    _start_time = time.time()
 
 #  -----------------------------------------------------------------------------
 
@@ -1439,6 +1433,3 @@ if __name__ == '__main__':
     main()
 
 
-if __debug__:
-    _dt = time.time() - _start_time
-    sys.stdout.write(u'%s loaded: %fs \n' % (__name__, _dt))
