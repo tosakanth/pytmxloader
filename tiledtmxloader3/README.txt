@@ -10,6 +10,8 @@ Homepage and download:
 
 Version 3.0.0 changelog:
 
+    
+    - using 'New BSD license' now
     - improved loading speed of maps
     - improved pygame loader and renderer
     - pyglet part is pretty broken
