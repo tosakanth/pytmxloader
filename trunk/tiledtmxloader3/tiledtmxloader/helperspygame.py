@@ -46,20 +46,16 @@ __author__ = u'DR0ID @ 2009-2011'
 #  -----------------------------------------------------------------------------
 
 
-import sys
-from xml.dom import minidom, Node
-import StringIO
-import os.path
 
 import pygame
 
-import tiledtmxloader
+import tmxreader
 
 #  -----------------------------------------------------------------------------
 
 #  -----------------------------------------------------------------------------
 
-class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
+class ResourceLoaderPygame(tmxreader.AbstractResourceLoader):
     """
     Resource loader for pygame. Loads the images as pygame.Surfaces and saves them in
     the variable indexed_tiles.
@@ -74,10 +70,10 @@ class ResourceLoaderPygame(tiledtmxloader.AbstractResourceLoader):
     """
 
     def __init__(self):
-        tiledtmxloader.AbstractResourceLoader.__init__(self)
+        tmxreader.AbstractResourceLoader.__init__(self)
 
     def load(self, tile_map):
-        tiledtmxloader.AbstractResourceLoader.load(self, tile_map)
+        tmxreader.AbstractResourceLoader.load(self, tile_map)
         self._img_cache.clear() # delete the original images from memory, they are all saved as tiles
         # ISSUE 17: flipped tiles
         for layer in self.world_map.layers:
@@ -1128,7 +1124,7 @@ def demo_pygame(file_name):
 
     # parser the map (it is done here to initialize the
     # window the same size as the map if it is small enough)
-    world_map = tiledtmxloader.TileMapParser().parse_decode(file_name)
+    world_map = tmxreader.TileMapParser().parse_decode(file_name)
 
     # init pygame and set up a screen
     pygame.init()
@@ -1409,6 +1405,8 @@ def _draw_obj_group(screen, obj_group, cam_world_pos_x, cam_world_pos_y, font):
 
 #  -----------------------------------------------------------------------------
 def main():
+    import sys
+    import os.path
 
     args = sys.argv[1:]
     if len(args) < 1:
