@@ -32,15 +32,15 @@ __revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
-import logging
-# the following few lines are needed to use logging if this module used without
-# a previous call to logging.basicConfig()
-if 0 == len(logging.root.handlers):
-    logging.basicConfig(level=logging.DEBUG)
+# import logging
+# # the following few lines are needed to use logging if this module used without
+# # a previous call to logging.basicConfig()
+# if 0 == len(logging.root.handlers):
+    # logging.basicConfig(level=logging.DEBUG)
 
-_LOGGER = logging.getLogger('tiledtmxloader')
-if __debug__:
-    _LOGGER.debug('%s loading ...' % (__name__))
+# _LOGGER = logging.getLogger('tiledtmxloader')
+# if __debug__:
+    # _LOGGER.debug('%s loading ...' % (__name__))
 #  -----------------------------------------------------------------------------
 
 
