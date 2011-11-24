@@ -835,6 +835,7 @@ class RendererPygame(object):
                 can be any pygame.Rect attribute: 'center', 'topleft', 'topright', ...
         """
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
+        self.set_camera_margin(*self._margin)
         self._render_cam_rect.center = self._cam_rect.center
 
     def set_camera_position_and_size(self, world_pos_x, world_pos_y, \

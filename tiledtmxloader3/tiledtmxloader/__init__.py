@@ -9,12 +9,6 @@ It loads the \*.tmx files produced by Tiled.
 
 """
 
-if __debug__:
-    import sys
-    sys.stdout.write(u'%s loading ... \n' % (__name__))
-    import time
-    _start_time = time.time()
-
 import tmxreader
 import helperspygame
 import helperspyglet
@@ -47,7 +41,3 @@ __author__ = u'DR0ID @ 2009-2011'
 
 #-------------------------------------------------------------------------------
 
-
-if __debug__:
-    _dt = time.time() - _start_time
-    sys.stdout.write(u'%s loaded: %fs \n' % (__name__, _dt))
