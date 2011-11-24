@@ -15,7 +15,11 @@ if __debug__:
     import time
     _start_time = time.time()
 
-import tiledtmxloader
+import tmxreader
+import helperspygame
+import helperspyglet
+
+__all__ = ["tmxreader", "helperspygame", "helperspyglet"]
 
 # Versioning scheme based on: http://en.wikipedia.org/wiki/Versioning#Designating_development_stage
 #
@@ -37,7 +41,7 @@ import tiledtmxloader
 #     * 1.2.3.5 instead of 1.2-r5 (commercial distribution with many bug fixes)
 
 __revision__ = "$Rev$"
-__version__ = tiledtmxloader.__version__
+__version__ = tmxreader.__version__
 __author__ = u'DR0ID @ 2009-2011'
 
 
