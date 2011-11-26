@@ -13,12 +13,11 @@ __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
 
-#  -----------------------------------------------------------------------------
-
-
 import pygame
 
 import tiledtmxloader
+
+#  -----------------------------------------------------------------------------
 
 def demo_pygame(file_name):
 
@@ -37,6 +36,7 @@ def demo_pygame(file_name):
     resources = tiledtmxloader.helperspygame.ResourceLoaderPygame()
     resources.load(world_map)
 
+    # prepare map rendering
     assert world_map.orientation == "orthogonal"
 
     # renderer
@@ -94,14 +94,7 @@ def demo_pygame(file_name):
             else:
                 renderer.render_layer(screen, sprite_layer)
 
-        # update the screen
         pygame.display.flip()
-
-
-#  -----------------------------------------------------------------------------
-
-#  -----------------------------------------------------------------------------
-
 
 
 #  -----------------------------------------------------------------------------
