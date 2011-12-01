@@ -27,7 +27,7 @@ def demo_pygame(file_name):
 
     # init pygame and set up a screen
     pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name)
+    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows, 0-9")
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
     screen = pygame.display.set_mode((screen_width, screen_height))
@@ -53,7 +53,7 @@ def demo_pygame(file_name):
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
     
-    # layer on off keys
+    # layer on/off keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
 
