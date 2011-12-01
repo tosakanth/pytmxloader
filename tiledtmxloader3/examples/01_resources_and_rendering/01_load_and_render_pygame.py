@@ -27,7 +27,7 @@ def demo_pygame(file_name):
 
     # init pygame and set up a screen
     pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name)
+    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows" )
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
     screen = pygame.display.set_mode((screen_width, screen_height))

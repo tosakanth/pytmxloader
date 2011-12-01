@@ -45,7 +45,7 @@ __author__ = u'DR0ID @ 2009-2011'
 
 #  -----------------------------------------------------------------------------
 
-
+from math import ceil
 
 import pygame
 
@@ -224,10 +224,17 @@ class SpriteLayer(object):
         self.position_y = _layer.y
 
 
-        self._level = 1 # start with an invalid level
+        self._level = 1
+        
+        # TODO: change scale attributes to properties?
+        self.scale_x = 1.0
+        self.scale_y = 1.0
 
+        # TODO: either change paralax_* attributes to properties 
+        # or make them private 
         self.paralax_factor_x = 1.0
         self.paralax_factor_y = 1.0
+        
         self.sprites = []
         self.is_object_group = _layer.is_object_group
         self.visible = _layer.visible
@@ -295,8 +302,8 @@ class SpriteLayer(object):
 
         layer.tilewidth = layer_orig.tilewidth * scale_w
         layer.tileheight = layer_orig.tileheight * scale_h
-        layer.num_tiles_x = layer_orig.width * scale_w
-        layer.num_tiles_y = layer_orig.height * scale_h
+        # layer.num_tiles_x = layer_orig.width * scale_w
+        # layer.num_tiles_y = layer_orig.height * scale_h
         layer.position_x = layer_orig.position_x
         layer.position_y = layer_orig.position_y
 
@@ -308,17 +315,30 @@ class SpriteLayer(object):
         layer.sprites = layer_orig.sprites
         layer.is_object_group = layer_orig.is_object_group
         layer.visible = layer_orig.visible
+        layer.scale_x = scale_w
+        layer.scale_y = scale_h
 
-        for xidx, row in enumerate(layer_orig.content2D):
-            for yidx, sprite in enumerate(row):
-                w, h = sprite.image.get_size()
-                new_w = w * scale_w
-                new_h = h * scale_h
-                image = pygame.transform.smoothscale(sprite.image, \
-                                                            (new_w, new_h))
-                x, y = sprite.rect.topleft
-                rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
-                layer.content2D[yidx][xidx] = SpriteLayer.Sprite(image, rect)
+        layer.content2D = [0] * len(layer_orig.content2D)
+        for yidx, row in enumerate(layer_orig.content2D):
+            layer.content2D[yidx] = [0] * len(row)
+            for xidx, sprite in enumerate(row):
+                if sprite:
+                    w, h = sprite.image.get_size()
+                    new_w = w * scale_w
+                    new_h = h * scale_h
+                    rect = sprite.rect
+                    image = sprite.image
+                    if w != ceil(new_w) and h != ceil(new_h):
+                        new_w = ceil(new_w)
+                        new_h = ceil(new_h)
+                        image = pygame.transform.smoothscale(sprite.image, \
+                                                                    (new_w, new_h))
+                        x, y = sprite.rect.topleft
+                        rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
+                        
+                    layer.content2D[yidx][xidx] = SpriteLayer.Sprite(image, rect)
+                else:
+                    layer.content2D[yidx][xidx] = None
 
         return layer
 

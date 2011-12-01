@@ -27,7 +27,7 @@ def demo_pygame(file_name):
 
     # init pygame and set up a screen
     pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name)
+    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows, 0-9, shift+[0,9]")
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
     screen = pygame.display.set_mode((screen_width, screen_height))
@@ -53,6 +53,10 @@ def demo_pygame(file_name):
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
 
+    # layer on/off keys
+    num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
+                    pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
+    
     # variables for the main loop
     frames_per_sec = 60.0
     clock = pygame.time.Clock()
@@ -77,6 +81,20 @@ def demo_pygame(file_name):
                     cam_world_pos_x += world_map.tilewidth
                 elif event.key == pygame.K_LEFT:
                     cam_world_pos_x -= world_map.tilewidth
+                elif event.key in num_keys:
+                    # find out which layer to manipulate
+                    idx = num_keys.index(event.key)
+                    # make sure this layer exists
+                    if idx < len(world_map.layers):
+                        growth = 0.1
+                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                            growth *= -1
+                        layer = sprite_layers[idx]
+                        
+                        sprite_layers[idx] = tiledtmxloader.helperspygame.SpriteLayer.scale(layer, layer.scale_x + growth, layer.scale_y + growth)
+                         
+                    else:
+                        print "no such layer or more than 10 layers: " + str(idx)
 
 
         # adjust camera to position according to the keypresses
