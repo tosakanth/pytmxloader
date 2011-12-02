@@ -48,7 +48,7 @@ def demo_pygame(file_name):
 
     # set initial cam position and size
     renderer.set_camera_position_and_size(cam_world_pos_x, cam_world_pos_y, \
-                                        screen_width, screen_height)
+                                        screen_width, screen_height, "topleft")
 
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
@@ -89,7 +89,8 @@ def demo_pygame(file_name):
                         growth = 0.1
                         if pygame.key.get_mods() & pygame.KMOD_SHIFT:
                             growth *= -1
-                        layer = sprite_layers[idx]
+                        # get the original layer to prevent blurring of images
+                        layer = tiledtmxloader.helperspygame.get_layer_at_index(idx, resources)
                         
                         sprite_layers[idx] = tiledtmxloader.helperspygame.SpriteLayer.scale(layer, layer.scale_x + growth, layer.scale_y + growth)
                          
@@ -98,7 +99,7 @@ def demo_pygame(file_name):
 
 
         # adjust camera to position according to the keypresses
-        renderer.set_camera_position(cam_world_pos_x, cam_world_pos_y)
+        renderer.set_camera_position(cam_world_pos_x, cam_world_pos_y, "topleft")
 
         # clear screen, might be left out if every pixel is redrawn anyway
         screen.fill((0,0,0))
