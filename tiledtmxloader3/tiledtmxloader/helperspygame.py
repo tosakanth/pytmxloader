@@ -856,7 +856,6 @@ class RendererPygame(object):
         """
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
         self.set_camera_margin(*self._margin)
-        self._render_cam_rect.center = self._cam_rect.center
 
     def set_camera_position_and_size(self, world_pos_x, world_pos_y, \
                                    width, height, alignment='center'):
@@ -919,7 +918,8 @@ class RendererPygame(object):
         self._render_cam_rect.top = self._render_cam_rect.top - margin_top
         # adjust bottom margin
         self._render_cam_rect.height = self._render_cam_rect.height + margin_top + margin_bottom
-
+        self._render_cam_rect.left = self._cam_rect.left - margin_left
+        self._render_cam_rect.top = self._cam_rect.top - margin_top
 
     def render_layer(self, surf, layer, clip_sprites=True, \
                                     sort_key=lambda spr: spr.get_draw_cond()):
@@ -960,9 +960,9 @@ class RendererPygame(object):
             # print 'cam rect:', self._cam_rect
             # print 'render r:', self._render_cam_rect
 
-            cam_world_pos_x = cam_rect.x * layer.paralax_factor_x + \
+            cam_world_pos_x = cam_rect.left * layer.paralax_factor_x + \
                                                                 layer.position_x
-            cam_world_pos_y = cam_rect.y * layer.paralax_factor_y + \
+            cam_world_pos_y = cam_rect.top * layer.paralax_factor_y + \
                                                                 layer.position_y
 
             # camera bounds, restricting number of tiles to draw
@@ -1022,7 +1022,7 @@ class RendererPygame(object):
                     # print '?', xpos, ypos, tile_sprite
                     if tile_sprite:
                         surf_blit(tile_sprite.image, \
-                                    tile_sprite.rect.move( - cam_world_pos_x, \
+                                    tile_sprite.rect.move( -cam_world_pos_x, \
                                                            -cam_world_pos_y), \
                                     tile_sprite.source_rect, \
                                     tile_sprite.flags)
