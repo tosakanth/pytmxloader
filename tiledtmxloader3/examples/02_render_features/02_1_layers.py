@@ -52,7 +52,7 @@ def demo_pygame(file_name):
 
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
-    
+
     # layer on/off keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
@@ -93,9 +93,6 @@ def demo_pygame(file_name):
                                                 sprite_layers[idx].visible
                     else:
                         print "no such layer or more than 10 layers: " + str(idx)
-                        
-                    
-
 
         # adjust camera to position according to the keypresses
         renderer.set_camera_position(cam_world_pos_x, cam_world_pos_y)
