@@ -61,15 +61,19 @@ def demo_pygame(file_name):
     frames_per_sec = 60.0
     clock = pygame.time.Clock()
     running = True
+    # set up timer for fps printing
+    pygame.time.set_timer(pygame.USEREVENT, 1000)
 
     # mainloop
     while running:
-        dt = clock.tick(frames_per_sec)
+        dt = clock.tick()
 
         # event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.USEREVENT:
+                print "fps: ", clock.get_fps()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False

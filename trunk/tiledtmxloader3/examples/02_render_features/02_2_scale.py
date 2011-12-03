@@ -27,7 +27,7 @@ def demo_pygame(file_name):
 
     # init pygame and set up a screen
     pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows, 0-9, shift+[0,9]")
+    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows, 0-9, shift+[0,9], r")
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
     screen = pygame.display.set_mode((screen_width, screen_height))
@@ -56,20 +56,25 @@ def demo_pygame(file_name):
     # layer on/off keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
-    
+
     # variables for the main loop
     frames_per_sec = 60.0
     clock = pygame.time.Clock()
     running = True
+    
+    # set up timer for fps printing
+    pygame.time.set_timer(pygame.USEREVENT, 1000)
 
     # mainloop
     while running:
-        dt = clock.tick(frames_per_sec)
+        dt = clock.tick()
 
         # event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.USEREVENT:
+                print "fps: ", clock.get_fps()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
@@ -86,16 +91,22 @@ def demo_pygame(file_name):
                     idx = num_keys.index(event.key)
                     # make sure this layer exists
                     if idx < len(world_map.layers):
-                        growth = 0.1
+                        growth = 0.05
                         if pygame.key.get_mods() & pygame.KMOD_SHIFT:
                             growth *= -1
                         # get the original layer to prevent blurring of images
                         layer = tiledtmxloader.helperspygame.get_layer_at_index(idx, resources)
-                        
-                        sprite_layers[idx] = tiledtmxloader.helperspygame.SpriteLayer.scale(layer, layer.scale_x + growth, layer.scale_y + growth)
-                         
+
+                        sprite_layers[idx] = tiledtmxloader.helperspygame.SpriteLayer.scale(layer, sprite_layers[idx].scale_x + growth, sprite_layers[idx].scale_y + growth)
+                        print "layer %s has now scale: %s, %s" % (idx, sprite_layers[idx].scale_x, sprite_layers[idx].scale_y) 
                     else:
                         print "no such layer or more than 10 layers: " + str(idx)
+                elif event.key == pygame.K_r:
+                    print "resetting layer scales"
+                    for idx in range(len(sprite_layers)):
+                        layer = tiledtmxloader.helperspygame.get_layer_at_index(idx, resources)
+                        if not layer.is_object_group:
+                            sprite_layers[idx] = tiledtmxloader.helperspygame.SpriteLayer.scale(layer, 1.0, 1.0)
 
 
         # adjust camera to position according to the keypresses
