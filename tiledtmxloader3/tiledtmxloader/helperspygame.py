@@ -57,8 +57,8 @@ import tmxreader
 
 class ResourceLoaderPygame(tmxreader.AbstractResourceLoader):
     """
-    Resource loader for pygame. Loads the images as pygame.Surfaces and saves them in
-    the variable indexed_tiles.
+    Resource loader for pygame. Loads the images as pygame.Surfaces and saves 
+    them in the variable indexed_tiles.
 
 
     Example::
@@ -74,7 +74,8 @@ class ResourceLoaderPygame(tmxreader.AbstractResourceLoader):
 
     def load(self, tile_map):
         tmxreader.AbstractResourceLoader.load(self, tile_map)
-        self._img_cache.clear() # delete the original images from memory, they are all saved as tiles
+        # delete the original images from memory, they are all saved as tiles
+        self._img_cache.clear()
         # ISSUE 17: flipped tiles
         for layer in self.world_map.layers:
             if not layer.is_object_group:
@@ -84,7 +85,9 @@ class ResourceLoaderPygame(tmxreader.AbstractResourceLoader):
                             image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
                             offx, offy, img = self.indexed_tiles[image_gid]
                             img = img.copy()
-                            img = pygame.transform.flip(img, bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
+                            img = pygame.transform.flip(img, \
+                                                    bool(gid & self.FLIP_X), \
+                                                    bool(gid & self.FLIP_Y))
                             self.indexed_tiles[gid] = (offx, offy, img)
 
     def _load_image_parts(self, filename, margin, spacing, \
@@ -209,7 +212,8 @@ class SpriteLayer(object):
             tile_layer_idx : int
                 Index of the tile layer to build upon
             resource_loader : ResourceLoaderPygame
-                Instance of the ResourceLoaderPygame class which has loaded the resouces
+                Instance of the ResourceLoaderPygame class which has loaded
+                the resouces
         """
         self._resource_loader = resource_loader
         _world_map = self._resource_loader.world_map
@@ -336,11 +340,13 @@ class SpriteLayer(object):
                         new_w = ceil(new_w)
                         new_h = ceil(new_h)
                         image = pygame.transform.smoothscale(sprite.image, \
-                                                                    (new_w, new_h))
+                                                                 (new_w, new_h))
                         x, y = sprite.rect.topleft
-                        rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
+                        rect = pygame.Rect(x * scale_w, y * scale_h, \
+                                                                new_w, new_h)
                         
-                    layer.content2D[yidx][xidx] = SpriteLayer.Sprite(image, rect)
+                    layer.content2D[yidx][xidx] = \
+                                                SpriteLayer.Sprite(image, rect)
                 else:
                     layer.content2D[yidx][xidx] = None
 
@@ -403,18 +409,17 @@ class SpriteLayer(object):
 
             for ypos_new in xrange(0, num_tiles_y):
                 for xpos_new in xrange(0, num_tiles_x):
-                        sprite = layer.content2D[ypos_new][xpos_new]
-                        if sprite:
-                            new_sprite = new_layer.content2D[ypos_new][xpos_new]
-                            if new_sprite:
-                                assert sprite.rect.topleft == new_sprite.rect.topleft
-                                assert sprite.rect.size == new_sprite.rect.size
-                                new_sprite.image.blit(sprite.image, (0, 0), sprite.source_rect, sprite.flags)
-                            else:
-                                new_sprite = sprite
-                            new_layer.content2D[ypos_new][xpos_new] = new_sprite
-
-
+                    sprite = layer.content2D[ypos_new][xpos_new]
+                    if sprite:
+                        new_sprite = new_layer.content2D[ypos_new][xpos_new]
+                        if new_sprite:
+                            assert sprite.rect.topleft == new_sprite.rect.topleft
+                            assert sprite.rect.size == new_sprite.rect.size
+                            new_sprite.image.blit(sprite.image, (0, 0), \
+                                            sprite.source_rect, sprite.flags)
+                        else:
+                            new_sprite = sprite
+                        new_layer.content2D[ypos_new][xpos_new] = new_sprite
 
         return new_layer
 
@@ -487,7 +492,8 @@ class SpriteLayer(object):
                     _content2D[ypos_new][xpos_new] = sprite
 
         # print "len content2D:", len(self.content2D)
-        # TODO: separate constructor from init code (here the layer is parsed for nothing, content2D will be replaced)
+        # TODO: separate constructor from init code (here the layer is parsed 
+        #       for nothing, content2D will be replaced)
         new_layer = SpriteLayer( layer.layer_idx, layer._resource_loader)
 
         new_layer.tilewidth  = new_tilewidth
@@ -857,7 +863,8 @@ class RendererPygame(object):
                 position in y in world coordinates
             alignment : string
                 defines to which part of the cam rect the position belongs,
-                can be any pygame.Rect attribute: 'center', 'topleft', 'topright', ...
+                can be any pygame.Rect 
+                attribute: 'center', 'topleft', 'topright', ...
         """
         setattr(self._cam_rect, alignment, (world_pos_x, world_pos_y))
         self.set_camera_margin(*self._margin)
@@ -878,7 +885,8 @@ class RendererPygame(object):
                 The height of the camera rect (the rendered area).
             alignment : string
                 Defines to which part of the cam rect the position belongs,
-                can be any pygame.Rect attribute: 'center', 'topleft', 'topright', ...
+                can be any pygame.Rect 
+                attribute: 'center', 'topleft', 'topright', ...
 
         """
         self._cam_rect.width = width
@@ -918,11 +926,13 @@ class RendererPygame(object):
         # adjust left margin
         self._render_cam_rect.left = self._render_cam_rect.left - margin_left
         # adjust right margin
-        self._render_cam_rect.width = self._render_cam_rect.width + margin_left + margin_right
+        self._render_cam_rect.width = self._render_cam_rect.width + \
+                                                    margin_left + margin_right
         # adjust top margin
         self._render_cam_rect.top = self._render_cam_rect.top - margin_top
         # adjust bottom margin
-        self._render_cam_rect.height = self._render_cam_rect.height + margin_top + margin_bottom
+        self._render_cam_rect.height = self._render_cam_rect.height + \
+                                                    margin_top + margin_bottom
         self._render_cam_rect.left = self._cam_rect.left - margin_left
         self._render_cam_rect.top = self._cam_rect.top - margin_top
 
@@ -937,8 +947,8 @@ class RendererPygame(object):
             layer : SpriteLayer
                 The layer to render. Invisible layers will be skipped.
             clip_sprites : boolean
-                Optional, defaults to True. Clip the sprites of this layer to only draw the ones
-                intersecting the visible part of the world.
+                Optional, defaults to True. Clip the sprites of this layer to 
+                only draw the ones intersecting the visible part of the world.
             sort_key : function
                 Optional: The sort function for the parameter 'key' of the sort
                 method of the list.
@@ -982,8 +992,6 @@ class RendererPygame(object):
             right = right if right < layer.num_tiles_x else layer.num_tiles_x
             top = top if top > 0 else 0
             bottom = bottom if bottom < layer.num_tiles_y else layer.num_tiles_y
-
-            # print '???', layer.num_tiles_x, layer.num_tiles_y, left, right, top, bottom, cam_rect
 
             # sprites
             spr_idx = 0
@@ -1048,17 +1056,20 @@ class RendererPygame(object):
                 The screen position in y direction.
 
         :Returns:
-            None if there is no sprite or the sprite (SpriteLayer.Sprite instance).
+            None if there is no sprite or the sprite 
+            (SpriteLayer.Sprite instance).
         """
         if layer.is_object_group:
             pass
         else:
-            world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
+            world_pos_x, world_pos_y = \
+                                   self.get_world_pos(layer, screen_x, screen_y)
 
             tile_x = int(world_pos_x / layer.tilewidth)
             tile_y = int(world_pos_y / layer.tileheight)
 
-            if 0 <= tile_x < layer.num_tiles_x and 0 <= tile_y < layer.num_tiles_y:
+            if 0 <= tile_x < layer.num_tiles_x and \
+               0 <= tile_y < layer.num_tiles_y:
                 sprite = layer.content2D[tile_y][tile_x]
                 if sprite:
                     return sprite
@@ -1085,7 +1096,8 @@ class RendererPygame(object):
         if layer.is_object_group:
             pass
         else:
-            world_pos_x, world_pos_y = self.get_world_pos(layer, screen_x, screen_y)
+            world_pos_x, world_pos_y = \
+                                self.get_world_pos(layer, screen_x, screen_y)
 
             r = pygame.Rect(world_pos_x, world_pos_y, 1, 1)
             indices = r.collidelistall(layer.sprites)
@@ -1096,8 +1108,9 @@ class RendererPygame(object):
         """
         Returns the world coordinates for the given screen location and layer.
 
-        :Note: this is important so one can check which entity is there in the model
-                (knowing which sprite is there does not help much)
+        :Note: 
+            this is important so one can check which entity is there in the 
+            model (knowing which sprite is there does not help much)
 
         :Parameters:
             layer : SpriteLayer
@@ -1112,7 +1125,8 @@ class RendererPygame(object):
 
         """
         # TODO: also use layer.x and layer.y offset
-        return (screen_x + self._render_cam_rect.x * layer.paralax_factor_x, screen_y + self._render_cam_rect.y * layer.paralax_factor_y)
+        return (screen_x + self._render_cam_rect.x * layer.paralax_factor_x, \
+                screen_y + self._render_cam_rect.y * layer.paralax_factor_y)
 
 
 
@@ -1181,7 +1195,7 @@ def demo_pygame(file_name):
     show_message = True
     font = pygame.font.Font(None, 15)
     s = "Frames Per Second: 0.0"
-    message = font.render(s, 0, (255,255,255), (0, 0, 0)).convert()
+    message = font.render(s, 0, (255, 255, 255), (0, 0, 0)).convert()
 
     # for timed fps update
     pygame.time.set_timer(pygame.USEREVENT, 1000)
@@ -1218,12 +1232,10 @@ def demo_pygame(file_name):
     renderer.set_camera_position_and_size(cam_world_pos_x, cam_world_pos_y, \
                                         screen_width, screen_height)
 
-    t = 0
 
     # mainloop
     while running:
         dt = clock_tick()#60.0)
-        t += dt
 
         # event handling
         for event in pygame_event_get():
@@ -1317,11 +1329,10 @@ def demo_pygame(file_name):
                         layer = sprite_layers[pressed_layer]
                         layer.set_layer_paralax_factor(\
                                        layer.get_layer_paralax_factor_x() - 0.1)
-                        print "reduced paralax factox on layer", pressed_layer,\
-                                    " to:", layer.get_layer_paralax_factor_x()
+                        print "reduced paralax factox on layer", \
+                       pressed_layer, " to:", layer.get_layer_paralax_factor_x()
 
             elif event.type == pygame.USEREVENT:
-                t = 0
                 print clock.get_fps()
 
                 if show_message:
@@ -1365,7 +1376,7 @@ def demo_pygame(file_name):
         renderer_set_camera_position(cam_world_pos_x, cam_world_pos_y)
 
         # clear screen, might be left out if every pixel is redrawn anyway
-        screen.fill((0,0,0))
+        screen.fill((0, 0, 0))
 
         sprites = []
         for layer in sprite_layers:
@@ -1389,11 +1400,12 @@ def demo_pygame(file_name):
 
 
         if show_message:
-            screen.blit(message, (0,0))
+            screen.blit(message, (0, 0))
 
         # print '??', len(sprites)
         for idx, spr in enumerate(sprites):
-            screen.blit(spr.image, (idx * spr.rect.w, screen.get_size()[1] - spr.rect.h))
+            screen.blit(spr.image, (idx * spr.rect.w, \
+                                            screen.get_size()[1] - spr.rect.h))
             # print '>>>>>', dud.rect.topleft
 
 
@@ -1431,6 +1443,9 @@ def _draw_obj_group(screen, obj_group, cam_world_pos_x, cam_world_pos_y, font):
 
 #  -----------------------------------------------------------------------------
 def main():
+    """
+    Main function.
+    """
     import sys
     import os.path
 
