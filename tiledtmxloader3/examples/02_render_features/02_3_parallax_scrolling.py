@@ -20,6 +20,9 @@ import tiledtmxloader
 #  -----------------------------------------------------------------------------
 
 def demo_pygame(file_name):
+    """
+    Example showing how to use the paralax scrolling feature.
+    """
 
     # parser the map (it is done here to initialize the
     # window the same size as the map if it is small enough)
@@ -27,7 +30,8 @@ def demo_pygame(file_name):
 
     # init pygame and set up a screen
     pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows, 0-9")
+    pygame.display.set_caption("tiledtmxloader - " + file_name + \
+                                                        " - keys: arrows, 0-9")
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
     screen = pygame.display.set_mode((screen_width, screen_height))
@@ -62,7 +66,6 @@ def demo_pygame(file_name):
         sprite_layers[idx].set_layer_paralax_factor(1.0 / len(sprite_layers) * (idx + 1))
 
     # variables for the main loop
-    frames_per_sec = 60.0
     clock = pygame.time.Clock()
     running = True
     speed = 0.075
@@ -84,8 +87,10 @@ def demo_pygame(file_name):
                     running = False
 
         # find directions
-        direction_x = pygame.key.get_pressed()[pygame.K_RIGHT] - pygame.key.get_pressed()[pygame.K_LEFT]
-        direction_y = pygame.key.get_pressed()[pygame.K_DOWN] - pygame.key.get_pressed()[pygame.K_UP]
+        direction_x = pygame.key.get_pressed()[pygame.K_RIGHT] - \
+                                        pygame.key.get_pressed()[pygame.K_LEFT]
+        direction_y = pygame.key.get_pressed()[pygame.K_DOWN] - \
+                                        pygame.key.get_pressed()[pygame.K_UP]
 
         # update position
         cam_world_pos_x += speed * dt * direction_x
@@ -95,7 +100,7 @@ def demo_pygame(file_name):
         renderer.set_camera_position(cam_world_pos_x, cam_world_pos_y, "topleft")
 
         # clear screen, might be left out if every pixel is redrawn anyway
-        screen.fill((0,0,0))
+        screen.fill((0, 0, 0))
 
         # render the map
         for sprite_layer in sprite_layers:
@@ -111,6 +116,9 @@ def demo_pygame(file_name):
 
 #  -----------------------------------------------------------------------------
 def main():
+    """
+    Main method.
+    """
     import sys
     import os.path
 
