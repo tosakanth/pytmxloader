@@ -328,7 +328,8 @@ class SpriteLayer(object):
                     new_h = h * scale_h
                     rect = sprite.rect
                     image = sprite.image
-                    if w != ceil(new_w) and h != ceil(new_h):
+                    # prevent fractional numbers and scaling glitches
+                    if w != ceil(new_w) or h != ceil(new_h):
                         new_w = ceil(new_w)
                         new_h = ceil(new_h)
                         image = pygame.transform.smoothscale(sprite.image, \
