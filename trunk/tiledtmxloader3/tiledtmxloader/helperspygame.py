@@ -300,7 +300,7 @@ class SpriteLayer(object):
             scale_h : float
                 Height scale factor in range (0, ...]
         """
-        if layer.is_object_group:
+        if layer_orig.is_object_group:
             return layer
         
         layer = SpriteLayer(layer_orig.layer_idx, layer_orig._resource_loader)
@@ -361,8 +361,6 @@ class SpriteLayer(object):
         :returns: new SpriteLayer with merged tiles
 
         """
-        if layer.is_object_group:
-            return layer
         tile_width = None
         tile_height = None
         num_tiles_x = None
@@ -372,8 +370,9 @@ class SpriteLayer(object):
         new_layer = None
 
         for layer in layers:
-            # if layer.is_object_group:
-                # raise Exception("not a SpriteLayer")
+            if layer.is_object_group:
+                # skip object group layers
+                continue
 
             assert isinstance(layer, SpriteLayer), "layer is not an instance of SpriteLayer"
 
