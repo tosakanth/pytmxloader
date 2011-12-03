@@ -292,18 +292,21 @@ class SpriteLayer(object):
         """
         Scales a layer and returns a new, scaled SpriteLayer.
 
+        :Note: This method is slow and inefficient
+
         :Parameters:
             scale_w : float
                 Width scale factor in range (0, ...]
             scale_h : float
                 Height scale factor in range (0, ...]
         """
+        if layer.is_object_group:
+            return layer
+        
         layer = SpriteLayer(layer_orig.layer_idx, layer_orig._resource_loader)
 
         layer.tilewidth = layer_orig.tilewidth * scale_w
         layer.tileheight = layer_orig.tileheight * scale_h
-        # layer.num_tiles_x = layer_orig.width * scale_w
-        # layer.num_tiles_y = layer_orig.height * scale_h
         layer.position_x = layer_orig.position_x
         layer.position_y = layer_orig.position_y
 
@@ -358,6 +361,8 @@ class SpriteLayer(object):
         :returns: new SpriteLayer with merged tiles
 
         """
+        if layer.is_object_group:
+            return layer
         tile_width = None
         tile_height = None
         num_tiles_x = None
@@ -447,9 +452,9 @@ class SpriteLayer(object):
         #        |    |    |    |    |
         #   2' 4 +----+----+----+----+
 
-        level = 2
         if layer.is_object_group:
             return layer
+        level = 2
 
         new_tilewidth = layer.tilewidth * level
         new_tileheight = layer.tileheight * level
