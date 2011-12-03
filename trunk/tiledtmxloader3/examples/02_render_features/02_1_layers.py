@@ -20,6 +20,9 @@ import tiledtmxloader
 #  -----------------------------------------------------------------------------
 
 def demo_pygame(file_name):
+    """
+    Demo showing the usage of layers and their visibility.
+    """
 
     # parser the map (it is done here to initialize the
     # window the same size as the map if it is small enough)
@@ -27,7 +30,8 @@ def demo_pygame(file_name):
 
     # init pygame and set up a screen
     pygame.init()
-    pygame.display.set_caption("tiledtmxloader - " + file_name + " - keys: arrows, 0-9")
+    pygame.display.set_caption("tiledtmxloader - " + file_name + \
+                                                        " - keys: arrows, 0-9")
     screen_width = min(1024, world_map.pixel_width)
     screen_height = min(768, world_map.pixel_height)
     screen = pygame.display.set_mode((screen_width, screen_height))
@@ -58,7 +62,6 @@ def demo_pygame(file_name):
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
 
     # variables for the main loop
-    frames_per_sec = 60.0
     clock = pygame.time.Clock()
     running = True
     # set up timer for fps printing
@@ -66,7 +69,7 @@ def demo_pygame(file_name):
 
     # mainloop
     while running:
-        dt = clock.tick()
+        clock.tick()
 
         # event handling
         for event in pygame.event.get():
@@ -96,13 +99,14 @@ def demo_pygame(file_name):
                         print "layer", idx, "visible:", \
                                                 sprite_layers[idx].visible
                     else:
-                        print "no such layer or more than 10 layers: " + str(idx)
+                        print "no such layer or more than 10 layers: " + \
+                                                                        str(idx)
 
         # adjust camera to position according to the keypresses
         renderer.set_camera_position(cam_world_pos_x, cam_world_pos_y)
 
         # clear screen, might be left out if every pixel is redrawn anyway
-        screen.fill((0,0,0))
+        screen.fill((0, 0, 0))
 
         # render the map
         for sprite_layer in sprite_layers:
@@ -118,6 +122,9 @@ def demo_pygame(file_name):
 
 #  -----------------------------------------------------------------------------
 def main():
+    """
+    Main method.
+    """
     import sys
     import os.path
 
