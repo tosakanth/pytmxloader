@@ -33,7 +33,7 @@ __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
 # import logging
-# # the following few lines are needed to use logging if this module used without
+# #the following few lines are needed to use logging if this module used without
 # # a previous call to logging.basicConfig()
 # if 0 == len(logging.root.handlers):
     # logging.basicConfig(level=logging.DEBUG)
@@ -91,7 +91,8 @@ class TileMap(object):
 
 
     def __init__(self):
-#        This is the top container for all data. The gid is the global id (for a image).
+#        This is the top container for all data. The gid is the global id 
+#       (for a image).
 #        Before calling convert most of the values are strings. Some additional
 #        values are also calculated, see convert() for details. After calling
 #        convert, most values are integers or floats where appropriat.
@@ -147,7 +148,9 @@ class TileMap(object):
             tile_set.margin = int(tile_set.margin)
             for img in tile_set.images:
                 if img.trans:
-                    img.trans = (int(img.trans[:2], 16), int(img.trans[2:4], 16), int(img.trans[4:], 16))
+                    img.trans = (int(img.trans[:2], 16), \
+                                 int(img.trans[2:4], 16), \
+                                 int(img.trans[4:], 16))
 
     def decode(self):
         u"""
@@ -155,7 +158,7 @@ class TileMap(object):
         """
         for layer in self.layers:
             if not layer.is_object_group:
-                layer.decode(self)
+                layer.decode()
 #  -----------------------------------------------------------------------------
 
 
@@ -181,9 +184,11 @@ class TileSet(object):
         properties : dict
             the propertis set in the editor, name-value pairs
         tilewidth : int
-            the actual width of the tile, can be different from the tilewidth of the map
+            the actual width of the tile, can be different from the tilewidth
+            of the map
         tilehight : int
-            the actual hight of th etile, can be different from the tilehight of the  map
+            the actual hight of th etile, can be different from the tilehight
+            of the  map
 
     """
 
@@ -193,7 +198,6 @@ class TileSet(object):
         self.images = [] # TileImage
         self.tiles = [] # Tile
         self.indexed_images = {} # {id:image}
-        # self.indexed_tiles = {} # {gid: (offsetx, offsety, image} <- actually in map data
         self.spacing = 0
         self.margin = 0
         self.properties = {}
@@ -216,7 +220,8 @@ class TileImage(object):
         encoding : string
             encoding of the content
         trans : tuple of (r,g,b)
-            the colorkey color, raw as hex, after calling convert just a (r,g,b) tuple
+            the colorkey color, raw as hex, after calling convert just a 
+            (r,g,b) tuple
         properties : dict
             the propertis set in the editor, name-value pairs
         image : TileImage
@@ -319,44 +324,48 @@ class TileLayer(object):
         self.is_object_group = False    # ISSUE 9
 
 
-    def decode(self, tile_map):
+    def decode(self):
         u"""
-        Converts the contents in a list of integers which are the gid of the used
-        tiles. If necessairy it decodes and uncompresses the contents.
+        Converts the contents in a list of integers which are the gid of the 
+        used tiles. If necessairy it decodes and uncompresses the contents.
         """
         self.decoded_content = []
         if self.encoded_content:
-            s = self.encoded_content
+            content = self.encoded_content
             if self.encoding:
                 if self.encoding.lower() == u'base64':
-                    s = decode_base64(s)
+                    content = decode_base64(content)
                 elif self.encoding.lower() == u'csv':
-                    list_of_lines = s.split()
+                    list_of_lines = content.split()
                     for line in list_of_lines:
                         self.decoded_content.extend(line.split(','))
-                    self.decoded_content = map(int, [val for val in self.decoded_content if val])
-                    s = ""
+                    self.decoded_content = map(int, \
+                                [val for val in self.decoded_content if val])
+                    content = ""
                 else:
-                    raise Exception(u'unknown data encoding %s' % (self.encoding))
+                    raise Exception(u'unknown data encoding %s' % \
+                                                                (self.encoding))
             else:
-                # in the case of xml the encoded_content already contains a list of integers
+                # in the case of xml the encoded_content already contains a 
+                # list of integers
                 self.decoded_content = map(int, self.encoded_content)
-                s = ""
+                content = ""
             if self.compression:
                 if self.compression == u'gzip':
-                    s = decompress_gzip(s)
+                    content = decompress_gzip(content)
                 elif self.compression == u'zlib':
-                    s = decompress_zlib(s)
+                    content = decompress_zlib(content)
                 else:
-                    raise Exception(u'unknown data compression %s' %(self.compression))
+                    raise Exception(u'unknown data compression %s' % \
+                                                            (self.compression))
         else:
             raise Exception(u'no encoded content to decode')
 
         struc = struct.Struct("<" + "I" * self.width)
         struc_unpack_from = struc.unpack_from
         self_decoded_content_extend = self.decoded_content.extend
-        for idx in xrange(0, len(s), 4 * self.width):
-            val = struc_unpack_from(s, idx)
+        for idx in xrange(0, len(content), 4 * self.width):
+            val = struc_unpack_from(content, idx)
             self_decoded_content_extend(val)
 
         arr = array.array('I')
@@ -374,16 +383,17 @@ class TileLayer(object):
         for xpos in xrange(self.width):
             self.content2D.append(array.array('I'))
             for ypos in xrange(self.height):
-                self.content2D[xpos].append(self.decoded_content[xpos + ypos * self.width])
+                self.content2D[xpos].append( \
+                                self.decoded_content[xpos + ypos * self.width])
 
     def pretty_print(self):
         num = 0
         for y in range(int(self.height)):
-            s = u""
+            output = u""
             for x in range(int(self.width)):
-                s += str(self.decoded_content[num])
+                output += str(self.decoded_content[num])
                 num += 1
-            print s
+            print output
 
     def convert(self):
         self.opacity = float(self.opacity)
@@ -524,9 +534,9 @@ def decompress_gzip(in_str):
     # gzip can only handle file object therefore using StringIO
     copmressed_stream = StringIO.StringIO(in_str)
     gzipper = gzip.GzipFile(fileobj=copmressed_stream)
-    s = gzipper.read()
+    content = gzipper.read()
     gzipper.close()
-    return s
+    return content
 
 #  -----------------------------------------------------------------------------
 def decompress_zlib(in_str):
@@ -540,8 +550,8 @@ def decompress_zlib(in_str):
     :returns: uncompressed string
     """
     import zlib
-    s = zlib.decompress(in_str)
-    return s
+    content = zlib.decompress(in_str)
+    return content
 #  -----------------------------------------------------------------------------
 def printer(obj, ident=''):
     u"""
@@ -562,9 +572,9 @@ def printer(obj, ident=''):
                     printer(elem, ident + '    ')
                 else:
                     print ident + u'%s\t= %s' % (name, getattr(obj, name))
-    for l in lists:
-        for i in l:
-            printer(i, ident + '    ')
+    for objt_list in lists:
+        for _obj in objt_list:
+            printer(_obj, ident + '    ')
 
 #  -----------------------------------------------------------------------------
 
@@ -583,7 +593,8 @@ class TileMapParser(object):
         if hasattr(tile_set, "source"):
             tile_set = self._parse_tsx(tile_set.source, tile_set, world_map)
         else:
-            tile_set = self._get_tile_set(tile_set_node, tile_set, self.map_file_name)
+            tile_set = self._get_tile_set(tile_set_node, tile_set, \
+                                                            self.map_file_name)
         world_map.tile_sets.append(tile_set)
 
     def _parse_tsx(self, file_name, tile_set, world_map):
@@ -592,7 +603,8 @@ class TileMapParser(object):
             # print "map file name", self.map_file_name
             file_name = self._get_abs_path(self.map_file_name, file_name)
         # print "tsx filename: ", file_name
-        # would be more elegant to use  "with open(file_name, "rb") as file:" but that is python 2.6
+        # would be more elegant to use  "with open(file_name, "rb") as file:" 
+        # but that is python 2.6
         file = None
         try:
             file = open(file_name, "rb")
@@ -602,7 +614,7 @@ class TileMapParser(object):
                 file.close()
         for node in self._get_nodes(dom.childNodes, 'tileset'):
             tile_set = self._get_tile_set(node, tile_set, file_name)
-            break;
+            break
         return tile_set
 
     def _get_tile_set(self, tile_set_node, tile_set, base_path):
@@ -616,7 +628,7 @@ class TileMapParser(object):
     def _build_tile_set_image(self, image_node, tile_set, base_path):
         image = TileImage()
         self._set_attributes(image_node, image)
-        # id of TileImage has to be set!! -> Tile.TileImage will only have id set
+        # id of TileImage has to be set! -> Tile.TileImage will only have id set
         for node in self._get_nodes(image_node.childNodes, u'data'):
             self._set_attributes(node, image)
             image.content = node.childNodes[0].nodeValue
@@ -624,11 +636,11 @@ class TileMapParser(object):
         tile_set.images.append(image)
 
     def _get_abs_path(self, base, relative):
-            if os.path.isabs(relative):
-                return relative
-            if os.path.isfile(base):
-                base = os.path.dirname(base)
-            return os.path.abspath(os.path.join(base, relative))
+        if os.path.isabs(relative):
+            return relative
+        if os.path.isfile(base):
+            base = os.path.dirname(base)
+        return os.path.abspath(os.path.join(base, relative))
 
     def _build_tile_set_tile(self, tile_set_node, tile_set):
         tile = Tile()
@@ -656,7 +668,8 @@ class TileMapParser(object):
                 #print 'has childnodes', node.hasChildNodes()
                 layer.encoded_content = []
                 for child in node.childNodes:
-                    if child.nodeType == Node.ELEMENT_NODE and child.nodeName == "tile":
+                    if child.nodeType == Node.ELEMENT_NODE and \
+                                                    child.nodeName == "tile":
                         val = child.attributes["gid"].nodeValue
                         #print child, val
                         layer.encoded_content.append(val)
@@ -682,7 +695,8 @@ class TileMapParser(object):
             tiled_object = MapObject()
             self._set_attributes(node, tiled_object)
             for img_node in self._get_nodes(node.childNodes, u'image'):
-                tiled_object.image_source = img_node.attributes[u'source'].nodeValue
+                tiled_object.image_source = \
+                                        img_node.attributes[u'source'].nodeValue
             object_group.objects.append(tiled_object)
         # ISSUE 9
         world_map.layers.append(object_group)
@@ -704,9 +718,11 @@ class TileMapParser(object):
         for properties_node in self._get_nodes(node.childNodes, u'properties'):
             for property_node in self._get_nodes(properties_node.childNodes, u'property'):
                 try:
-                    props[property_node.attributes[u'name'].nodeValue] = property_node.attributes[u'value'].nodeValue
+                    props[property_node.attributes[u'name'].nodeValue] = \
+                                    property_node.attributes[u'value'].nodeValue
                 except KeyError:
-                    props[property_node.attributes[u'name'].nodeValue] = property_node.lastChild.nodeValue
+                    props[property_node.attributes[u'name'].nodeValue] = \
+                                            property_node.lastChild.nodeValue
         obj.properties.update(props)
 
 
@@ -716,7 +732,8 @@ class TileMapParser(object):
         Parses the given map. Does no decoding nor loading of the data.
         :return: instance of TileMap
         """
-        # would be more elegant to use  "with open(file_name, "rb") as tmx_file:" but that is python 2.6
+        # would be more elegant to use  
+        # "with open(file_name, "rb") as tmx_file:" but that is python 2.6
         self.map_file_name = os.path.abspath(file_name)
         tmx_file = None
         try:
@@ -750,8 +767,8 @@ class AbstractResourceLoader(object):
 
     """
 
-    FLIP_X = 1<<31
-    FLIP_Y = 1<<30
+    FLIP_X = 1 << 31
+    FLIP_Y = 1 << 30
 
     def __init__(self):
         self.indexed_tiles = {} # {gid: (offsetx, offsety, image}
@@ -766,7 +783,8 @@ class AbstractResourceLoader(object):
             filename : string
                 Path to the file to be loaded.
             colorkey : tuple
-                The (r, g, b) color that should be used as colorkey (or magic color).
+                The (r, g, b) color that should be used as colorkey 
+                (or magic color).
                 Default: None
 
         :rtype: image
@@ -782,7 +800,8 @@ class AbstractResourceLoader(object):
             file_like_obj : file
                 This is the file like object to load the image from.
             colorkey : tuple
-                The (r, g, b) color that should be used as colorkey (or magic color).
+                The (r, g, b) color that should be used as colorkey 
+                (or magic color).
                 Default: None
 
         :rtype: image
@@ -805,7 +824,8 @@ class AbstractResourceLoader(object):
             tileheight : int
                 The height of a single tile.
             colorkey : tuple
-                The (r, g, b) color that should be used as colorkey (or magic color).
+                The (r, g, b) color that should be used as colorkey 
+                (or magic color).
                 Default: None
 
         Luckily that iteration is so easy in python::
@@ -847,7 +867,8 @@ class AbstractResourceLoader(object):
 
     def _load_image_from_source(self, tile_map, tile_set, a_tile_image):
         # relative path to file
-        img_path = os.path.join(os.path.dirname(tile_map.map_file_name), a_tile_image.source)
+        img_path = os.path.join(os.path.dirname(tile_map.map_file_name), \
+                                                            a_tile_image.source)
         tile_width = int(tile_map.tilewidth)
         tile_height = int(tile_map.tileheight)
         if tile_set.tileheight:
@@ -861,8 +882,10 @@ class AbstractResourceLoader(object):
             offsety = tile_height - tile_map.tileheight
         idx = 0
         for image in self._load_image_parts(img_path, \
-                    tile_set.margin, tile_set.spacing, tile_width, tile_height, a_tile_image.trans):
-            self.indexed_tiles[int(tile_set.firstgid) + idx] = (offsetx, -offsety, image)
+                    tile_set.margin, tile_set.spacing, \
+                    tile_width, tile_height, a_tile_image.trans):
+            self.indexed_tiles[int(tile_set.firstgid) + idx] = \
+                                                    (offsetx, -offsety, image)
             idx += 1
 
     def _load_tile_image(self, a_tile_image):
