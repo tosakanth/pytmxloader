@@ -17,6 +17,9 @@ import tiledtmxloader
 
 
 def demo_pygame(file_name):
+    """
+    Example showing how to load a map.
+    """
 
     # parser the map (it is done here to initialize the
     # window the same size as the map if it is small enough)
@@ -49,6 +52,9 @@ def demo_pygame(file_name):
 
 #  -----------------------------------------------------------------------------
 def main():
+    """
+    Main method.
+    """
     import sys
     import os.path
 
