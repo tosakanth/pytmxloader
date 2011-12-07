@@ -32,7 +32,6 @@ class Dude(tiledtmxloader.helperspygame.SpriteLayer.Sprite):
         Constructor.
         """
         super(Dude, self).__init__(img, img.get_rect())
-        self.random = __import__('random')
         self.velocity_x = 0
         self.velocity_y = 0
         self.position_x = start_pos_x
@@ -108,7 +107,7 @@ def demo_pygame(file_name):
     # dynamic sprites
     my_sprites = [create_dude(world_map.pixel_width, world_map.pixel_height) for x in range(30)]
     
-    # layer on/off keys
+    # layer add/remove dynamic sprites
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
 
