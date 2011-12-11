@@ -61,8 +61,8 @@ def demo_pygame(file_name):
     
     # create hero sprite
     # use floats for hero position
-    hero_pos_x = screen_width / 2.0
-    hero_pos_y = screen_height / 2.0
+    hero_pos_x = screen_width
+    hero_pos_y = screen_height
     hero = create_hero(hero_pos_x, hero_pos_y)
 
     # cam_offset is for scrolling
