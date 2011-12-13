@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 from distutils.core import setup
 import sys
 
@@ -14,9 +15,9 @@ setup(name='tiledtmxloader',
       url='https://code.google.com/p/pytmxloader/',
       download_url='https://code.google.com/p/pytmxloader/downloads/list',
       description='',
-      long_description=tiledtmxloader.tiledtmxloader.__doc__,
+      long_description=tiledtmxloader.tmxreader.__doc__,
       package_dir={'': 'tiledtmxloader'},
-      py_modules=['tiledtmxloader', '__init__', 'helperspygame', 'helperspyglet'],
+      py_modules=['tmxreader', '__init__', 'helperspygame', 'helperspyglet'],
       provides=['tiledtmxloader'],
       keywords='pygame tiled mapeditor game map',
       license='New BSD License',
