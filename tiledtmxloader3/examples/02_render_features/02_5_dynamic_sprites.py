@@ -8,61 +8,39 @@ This is the pygame minimal example.
 """
 from __future__ import division
 
-__revision__ = "$Rev: 82 $"
+__revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
+import sys
+import os
 import random
 from random import randint
 
 import pygame
 
+try:
+    import _path
+except:
+    pass
+
 import tiledtmxloader
 
 #  -----------------------------------------------------------------------------
 
-class Dude(tiledtmxloader.helperspygame.SpriteLayer.Sprite):
+def main():
     """
-    This is a dynamic sprite. Imagine it is an animal or hero or
-    similar moving around the world.
+    Main method.
     """
+    args = sys.argv[1:]
+    if len(args) < 1:
+        path_to_map = os.path.join(os.pardir, "001-1.tmx")
+        print("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
+            (os.path.basename(__file__), path_to_map))
+    else:
+        path_to_map = args[0]
 
-    def __init__(self, img, start_pos_x, start_pos_y):
-        """
-        Constructor.
-        """
-        super(Dude, self).__init__(img, img.get_rect())
-        self.velocity_x = 0
-        self.velocity_y = 0
-        self.position_x = start_pos_x
-        self.position_y = start_pos_y
-        self.rect.center = (self.position_x, self.position_y)
-
-    def update(self, dt):
-        """
-        Update the movement of the dudue.
-        """
-        if self.random.random() < 0.05:
-            if self.velocity_x:
-                self.velocity_x = 0
-                self.velocity_y = 0
-            else:
-                self.velocity_x = randint(-10, 10) * 0.005
-                self.velocity_y = randint(-10, 10) * 0.005
-        self.position_x += self.velocity_x * dt
-        self.position_y += self.velocity_y * dt
-        self.rect.center = (self.position_x, self.position_y)
-
-
-def create_dude(world_width, world_height):
-    """
-    Creates a random dude.
-    """
-    position_x = randint(0, world_width)
-    position_y = randint(0, world_height)
-    image = pygame.Surface((randint(40, 60), randint(70, 80)), pygame.SRCALPHA)
-    image.fill((randint(0, 255), randint(0, 255), randint(0, 255), 200))
-    return Dude(image, position_x, position_x)
+    demo_pygame(path_to_map)
 
 #  -----------------------------------------------------------------------------
 
@@ -106,7 +84,7 @@ def demo_pygame(file_name):
 
     # dynamic sprites
     my_sprites = [create_dude(world_map.pixel_width, world_map.pixel_height) for x in range(30)]
-    
+
     # layer add/remove dynamic sprites
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
@@ -161,7 +139,7 @@ def demo_pygame(file_name):
         # update sprites position
         for spr in my_sprites:
             spr.update(dt)
-                        
+
         # adjust camera to position according to the keypresses
         renderer.set_camera_position(cam_world_pos_x, cam_world_pos_y, "topleft")
 
@@ -176,25 +154,54 @@ def demo_pygame(file_name):
                 continue
             else:
                 renderer.render_layer(screen, sprite_layer)
-                
+
         pygame.display.flip()
 
+#  -----------------------------------------------------------------------------
+
+def create_dude(world_width, world_height):
+    """
+    Creates a random dude.
+    """
+    position_x = randint(0, world_width)
+    position_y = randint(0, world_height)
+    image = pygame.Surface((randint(40, 60), randint(70, 80)), pygame.SRCALPHA)
+    image.fill((randint(0, 255), randint(0, 255), randint(0, 255), 200))
+    return Dude(image, position_x, position_x)
 
 #  -----------------------------------------------------------------------------
-def main():
-    """
-    Main method.
-    """
-    import sys
-    import os.path
 
-    args = sys.argv[1:]
-    if len(args) < 1:
-        print('usage: python %s your_map.tmx' % \
-            os.path.basename(__file__))
-        return
+class Dude(tiledtmxloader.helperspygame.SpriteLayer.Sprite):
+    """
+    This is a dynamic sprite. Imagine it is an animal or hero or
+    similar moving around the world.
+    """
 
-    demo_pygame(args[0])
+    def __init__(self, img, start_pos_x, start_pos_y):
+        """
+        Constructor.
+        """
+        super(Dude, self).__init__(img, img.get_rect())
+        self.velocity_x = 0
+        self.velocity_y = 0
+        self.position_x = start_pos_x
+        self.position_y = start_pos_y
+        self.rect.center = (self.position_x, self.position_y)
+
+    def update(self, dt):
+        """
+        Update the movement of the dudue.
+        """
+        if random.random() < 0.05:
+            if self.velocity_x:
+                self.velocity_x = 0
+                self.velocity_y = 0
+            else:
+                self.velocity_x = randint(-10, 10) * 0.005
+                self.velocity_y = randint(-10, 10) * 0.005
+        self.position_x += self.velocity_x * dt
+        self.position_y += self.velocity_y * dt
+        self.rect.center = (self.position_x, self.position_y)
 
 #  -----------------------------------------------------------------------------
 

@@ -8,7 +8,7 @@ This is the pygame minimal example.
 """
 from __future__ import division
 
-__revision__ = "$Rev: 82 $"
+__revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
@@ -18,21 +18,28 @@ import math
 
 import pygame
 
+try:
+    import _path
+except:
+    pass
+
 import tiledtmxloader
 
 #  -----------------------------------------------------------------------------
+
 def main():
     """
     Main method.
     """
-
     args = sys.argv[1:]
     if len(args) < 1:
-        print('usage: python %s your_map.tmx' % \
-            os.path.basename(__file__))
-        return
+        path_to_map = os.path.join(os.pardir, "001-1.tmx")
+        print("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
+            (os.path.basename(__file__), path_to_map))
+    else:
+        path_to_map = args[0]
 
-    demo_pygame(args[0])
+    demo_pygame(path_to_map)
 
 #  -----------------------------------------------------------------------------
 
@@ -80,7 +87,11 @@ def demo_pygame(file_name):
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
 
+    # filter layers
     sprite_layers = [layer for layer in sprite_layers if not layer.is_object_group]
+
+    # add the hero the the right layer, it can be changed using 0-9 keys
+    sprite_layers[1].add_sprite(hero)
 
     # layer add/remove hero keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
@@ -150,7 +161,6 @@ def demo_pygame(file_name):
                 renderer.render_layer(screen, sprite_layer)
 
         pygame.display.flip()
-
 
 #  -----------------------------------------------------------------------------
 

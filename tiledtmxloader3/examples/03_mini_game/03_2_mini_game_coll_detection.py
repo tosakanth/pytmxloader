@@ -8,7 +8,7 @@ This is the pygame minimal example.
 """
 from __future__ import division
 
-__revision__ = "$Rev: 82 $"
+__revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
@@ -22,10 +22,8 @@ try:
     import _path
 except:
     pass
-    
 
 import tiledtmxloader
-
 
 #  -----------------------------------------------------------------------------
 
@@ -33,7 +31,6 @@ def main():
     """
     Main method.
     """
-
     args = sys.argv[1:]
     if len(args) < 1:
         path_to_map = os.path.join(os.pardir, "001-1.tmx")
@@ -93,7 +90,11 @@ def demo_pygame(file_name):
 
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
+
+    # filter layers
     sprite_layers = [layer for layer in sprite_layers if not layer.is_object_group]
+
+    # add the hero the the right layer, it can be changed using 0-9 keys
     sprite_layers[1].add_sprite(hero)
 
     # layer add/remove hero keys

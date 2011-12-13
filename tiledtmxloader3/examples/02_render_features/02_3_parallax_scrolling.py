@@ -8,14 +8,37 @@ This is the pygame minimal example.
 """
 from __future__ import division
 
-__revision__ = "$Rev: 82 $"
+__revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
+import sys
+import os
 
 import pygame
 
+try:
+    import _path
+except:
+    pass
+
 import tiledtmxloader
+
+#  -----------------------------------------------------------------------------
+
+def main():
+    """
+    Main method.
+    """
+    args = sys.argv[1:]
+    if len(args) < 1:
+        path_to_map = os.path.join(os.pardir, "001-1.tmx")
+        print("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
+            (os.path.basename(__file__), path_to_map))
+    else:
+        path_to_map = args[0]
+
+    demo_pygame(path_to_map)
 
 #  -----------------------------------------------------------------------------
 
@@ -112,23 +135,6 @@ def demo_pygame(file_name):
                 renderer.render_layer(screen, sprite_layer)
 
         pygame.display.flip()
-
-
-#  -----------------------------------------------------------------------------
-def main():
-    """
-    Main method.
-    """
-    import sys
-    import os.path
-
-    args = sys.argv[1:]
-    if len(args) < 1:
-        print('usage: python %s your_map.tmx' % \
-            os.path.basename(__file__))
-        return
-
-    demo_pygame(args[0])
 
 #  -----------------------------------------------------------------------------
 
