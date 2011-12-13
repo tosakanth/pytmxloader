@@ -12,6 +12,8 @@ __revision__ = "$Rev: 82 $"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
+import sys
+import os
 import math
 
 import pygame
@@ -19,16 +21,18 @@ import pygame
 import tiledtmxloader
 
 #  -----------------------------------------------------------------------------
+def main():
+    """
+    Main method.
+    """
 
-def create_hero(start_pos_x, start_pos_y):
-    """
-    Creates the hero sprite.
-    """
-    image = pygame.Surface((50, 70), pygame.SRCALPHA)
-    image.fill((255, 0, 0, 200))
-    rect = image.get_rect()
-    rect.midbottom = (start_pos_x, start_pos_y)
-    return tiledtmxloader.helperspygame.SpriteLayer.Sprite(image, rect)
+    args = sys.argv[1:]
+    if len(args) < 1:
+        print('usage: python %s your_map.tmx' % \
+            os.path.basename(__file__))
+        return
+
+    demo_pygame(args[0])
 
 #  -----------------------------------------------------------------------------
 
@@ -58,7 +62,7 @@ def demo_pygame(file_name):
 
     # renderer
     renderer = tiledtmxloader.helperspygame.RendererPygame()
-    
+
     # create hero sprite
     # use floats for hero position
     hero_pos_x = screen_width
@@ -75,13 +79,13 @@ def demo_pygame(file_name):
 
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
-    
+
     sprite_layers = [layer for layer in sprite_layers if not layer.is_object_group]
 
     # layer add/remove hero keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
-                    
+
     # variables for the main loop
     clock = pygame.time.Clock()
     running = True
@@ -149,20 +153,16 @@ def demo_pygame(file_name):
 
 
 #  -----------------------------------------------------------------------------
-def main():
-    """
-    Main method.
-    """
-    import sys
-    import os.path
 
-    args = sys.argv[1:]
-    if len(args) < 1:
-        print('usage: python %s your_map.tmx' % \
-            os.path.basename(__file__))
-        return
-
-    demo_pygame(args[0])
+def create_hero(start_pos_x, start_pos_y):
+    """
+    Creates the hero sprite.
+    """
+    image = pygame.Surface((50, 70), pygame.SRCALPHA)
+    image.fill((255, 0, 0, 200))
+    rect = image.get_rect()
+    rect.midbottom = (start_pos_x, start_pos_y)
+    return tiledtmxloader.helperspygame.SpriteLayer.Sprite(image, rect)
 
 #  -----------------------------------------------------------------------------
 
