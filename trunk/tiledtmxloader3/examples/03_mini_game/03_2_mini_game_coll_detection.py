@@ -12,11 +12,20 @@ __revision__ = "$Rev: 82 $"
 __version__ = "3.0.0." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
+import sys
+import os
 import math
 
 import pygame
 
+try:
+    import _path
+except:
+    pass
+    
+
 import tiledtmxloader
+
 
 #  -----------------------------------------------------------------------------
 
@@ -24,28 +33,16 @@ def main():
     """
     Main method.
     """
-    import sys
-    import os.path
 
     args = sys.argv[1:]
     if len(args) < 1:
-        print('usage: python %s your_map.tmx' % \
-            os.path.basename(__file__))
-        return
+        path_to_map = os.path.join(os.pardir, "001-1.tmx")
+        print("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
+            (os.path.basename(__file__), path_to_map))
+    else:
+        path_to_map = args[0]
 
-    demo_pygame(args[0])
-
-#  -----------------------------------------------------------------------------
-
-def create_hero(start_pos_x, start_pos_y):
-    """
-    Creates the hero sprite.
-    """
-    image = pygame.Surface((50, 70), pygame.SRCALPHA)
-    image.fill((255, 0, 0, 200))
-    rect = image.get_rect()
-    rect.midbottom = (start_pos_x, start_pos_y)
-    return tiledtmxloader.helperspygame.SpriteLayer.Sprite(image, rect)
+    demo_pygame(path_to_map)
 
 #  -----------------------------------------------------------------------------
 
@@ -75,13 +72,13 @@ def demo_pygame(file_name):
 
     # renderer
     renderer = tiledtmxloader.helperspygame.RendererPygame()
-    
+
     # create hero sprite
     # use floats for hero position
     hero_pos_x = screen_width
     hero_pos_y = screen_height
     hero = create_hero(hero_pos_x, hero_pos_y)
-    
+
     # dimensions of the hero for collision detection
     hero_width = 50
     hero_height = 10
@@ -96,13 +93,13 @@ def demo_pygame(file_name):
 
     # retrieve the layers
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
-    
     sprite_layers = [layer for layer in sprite_layers if not layer.is_object_group]
+    sprite_layers[1].add_sprite(hero)
 
     # layer add/remove hero keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
-                    
+
     # variables for the main loop
     clock = pygame.time.Clock()
     running = True
@@ -146,7 +143,7 @@ def demo_pygame(file_name):
         # make sure the hero moves with same speed in all directions (diagonal!)
         dir_len = math.hypot(direction_x, direction_y)
         dir_len = dir_len if dir_len else 1.0
-        
+
         # update position
         step_x = speed * dt * direction_x / dir_len
         step_y = speed * dt * direction_y / dir_len
@@ -176,6 +173,18 @@ def demo_pygame(file_name):
 
 #  -----------------------------------------------------------------------------
 
+def create_hero(start_pos_x, start_pos_y):
+    """
+    Creates the hero sprite.
+    """
+    image = pygame.Surface((50, 70), pygame.SRCALPHA)
+    image.fill((255, 0, 0, 200))
+    rect = image.get_rect()
+    rect.midbottom = (start_pos_x, start_pos_y)
+    return tiledtmxloader.helperspygame.SpriteLayer.Sprite(image, rect)
+
+#  -----------------------------------------------------------------------------
+
 # unused in this demo, just here to show how you could check for collision!
 def is_walkable(pos_x, pos_y, coll_layer):
     """
@@ -183,7 +192,7 @@ def is_walkable(pos_x, pos_y, coll_layer):
     """
     tile_x = int(pos_x // coll_layer.tilewidth)
     tile_y = int(pos_y // coll_layer.tileheight)
-    
+
     if coll_layer.content2D[tile_y][tile_x] is None:
         return True
     return False
@@ -193,9 +202,9 @@ def is_walkable(pos_x, pos_y, coll_layer):
 def check_collision(hero_pos_x, hero_pos_y, step_x, step_y, \
                                     hero_width, hero_height, coll_layer):
     """
-    Checks collision of the hero against the world. Its not the best way to 
+    Checks collision of the hero against the world. Its not the best way to
     handle collision detection but for this demo it is good enough.
-    
+
     :Returns: steps to add to heros current position.
     """
     # create hero rect
@@ -242,6 +251,13 @@ def special_round(value):
     for positive numbers it returns the value ceiled.
     """
     # same as:  math.copysign(math.ceil(abs(x)), x)
+    # OR:
+    # ## versus this, which could save many function calls
+    # import math
+    # ceil_or_floor = { True : math.ceil, False : math.floor, }
+    # # usage
+    # x = floor_or_ceil[val<0.0](val)
+
     if value < 0:
         return math.floor(value)
     return math.ceil(value)
