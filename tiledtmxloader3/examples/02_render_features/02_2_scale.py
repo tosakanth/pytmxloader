@@ -6,11 +6,11 @@
 This is the pygame minimal example.
 
 """
-from __future__ import division
+
 
 __revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
-__author__ = u'DR0ID @ 2009-2011'
+__author__ = 'DR0ID @ 2009-2011'
 
 import sys
 import os
@@ -33,8 +33,8 @@ def main():
     args = sys.argv[1:]
     if len(args) < 1:
         path_to_map = os.path.join(os.pardir, "001-1.tmx")
-        print("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
-            (os.path.basename(__file__), path_to_map))
+        print(("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
+            (os.path.basename(__file__), path_to_map)))
     else:
         path_to_map = args[0]
 
@@ -100,7 +100,7 @@ def demo_pygame(file_name):
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.USEREVENT:
-                print "fps: ", clock.get_fps()
+                print("fps: ", clock.get_fps())
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
@@ -124,12 +124,12 @@ def demo_pygame(file_name):
                         layer = tiledtmxloader.helperspygame.get_layer_at_index(idx, resources)
 
                         sprite_layers[idx] = tiledtmxloader.helperspygame.SpriteLayer.scale(layer, sprite_layers[idx].scale_x + growth, sprite_layers[idx].scale_y + growth)
-                        print "layer %s has now scale: %s, %s" % (idx, sprite_layers[idx].scale_x, sprite_layers[idx].scale_y) 
+                        print("layer %s has now scale: %s, %s" % (idx, sprite_layers[idx].scale_x, sprite_layers[idx].scale_y)) 
                     else:
-                        print "no such layer or more than 10 layers: " + \
-                                                                        str(idx)
+                        print("no such layer or more than 10 layers: " + \
+                                                                        str(idx))
                 elif event.key == pygame.K_r:
-                    print "resetting layer scales"
+                    print("resetting layer scales")
                     for idx in range(len(sprite_layers)):
                         layer = tiledtmxloader.helperspygame.get_layer_at_index(idx, resources)
                         if not layer.is_object_group:

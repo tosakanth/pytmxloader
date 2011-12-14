@@ -1,11 +1,19 @@
 
+LICENSES
+
+    - The map "001-1.tmx" and its tilesets are under the GPL2+ license!
+    - The examples itself are undder the "New BSD license"
+
+
+
 Welcome the the examples for the tiledtmxloader version 3.X
 
 Unfortunately I had not time to implement the pyglet parts, so
 this examples are all pygame only.
 
-There is a map included from the game "The mana world" [see: ].
+There is a map included from the game "The mana world" [http://themanaworld.org/].
 It is called "001-1.tmx" and is placed next to this README file.
+
 
 This map allows to show most of the features of this release. It is
 automatically used if you start the examples without argument. If you wish
