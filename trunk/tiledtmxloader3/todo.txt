@@ -5,11 +5,6 @@
 2011-08-03 - Gumm recollects ideas from past conversations.
 
 - Support tile attributes.
-- Redo layers (I see there are some notes above). Also, when layers are
-     transformed (merge, scale, etc.) the resulting layer needs to retain its Tiled attributes.
-     
-- Flashy examples.
-- Maybe a tutorial for nubs. "How do I use Tiled to make a level?"
 - maybe introduce a global image cache
 - Integrate an efficient scrollbuffer of some kind (instead of collapse)?
 
@@ -17,6 +12,12 @@
 
 
 ---- Done ----------------------------------------------------------------------
+
+2011-12-14
++ Flashy examples.
++ Maybe a tutorial for nubs. "How do I use Tiled to make a level?"
++ Redo layers (I see there are some notes above). Also, when layers are
+     transformed (merge, scale, etc.) the resulting layer needs to retain its Tiled attributes.
 
 2011-11-03
 + class ResourceLoaderPygame: implement new feature to support flipped tiles (newer versions of tiled support that)
