@@ -1,21 +1,32 @@
-pytmxloader 
+pytmxloader
 
-a python map loader for the map format used by Tiled (see www.mapeditor.org)
+A python map loader for the map format used by Tiled (see www.mapeditor.org)
 
-Homepage and download:
+Project homepage and download:
     https://code.google.com/p/pytmxloader/
     https://code.google.com/p/pytmxloader/downloads/list
 
+Dependencies:
+    python      http://www.python.org
+    pygame      http://www.pygame.org
 
 
-Version 3.0.0 changelog:
+==== changelog ====
 
-    
+2011-12-14  [beta release 3.0.1]
+    - added examples
+    - fixed scaling
+    - fixed hero size of minig game examples
+    - reogranized module imports
+    - fixed marging position
+
+
+2011-11-23  [alpha release 3.0.0.82]
     - using 'New BSD license' now
     - improved loading speed of maps
     - improved pygame loader and renderer
     - pyglet part is pretty broken
-    
+
 
 
 
