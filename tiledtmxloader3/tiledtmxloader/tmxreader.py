@@ -29,7 +29,7 @@ It loads the \*.tmx files produced by Tiled.
 #     * 1.2.3.5 instead of 1.2-r5 (commercial distribution with many bug fixes)
 
 __revision__ = "$Rev$"
-__version__ = "3.0.2." + __revision__[6:-2]
+__version__ = "3.0.3." + __revision__[6:-2]
 __author__ = u'DR0ID @ 2009-2011'
 
 # import logging
