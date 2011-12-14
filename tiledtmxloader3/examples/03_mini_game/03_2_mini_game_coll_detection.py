@@ -77,8 +77,8 @@ def demo_pygame(file_name):
     hero = create_hero(hero_pos_x, hero_pos_y)
 
     # dimensions of the hero for collision detection
-    hero_width = 50
-    hero_height = 10
+    hero_width = hero.rect.width
+    hero_height = 5
 
     # cam_offset is for scrolling
     cam_world_pos_x = hero.rect.centerx
@@ -178,7 +178,7 @@ def create_hero(start_pos_x, start_pos_y):
     """
     Creates the hero sprite.
     """
-    image = pygame.Surface((50, 70), pygame.SRCALPHA)
+    image = pygame.Surface((25, 45), pygame.SRCALPHA)
     image.fill((255, 0, 0, 200))
     rect = image.get_rect()
     rect.midbottom = (start_pos_x, start_pos_y)
