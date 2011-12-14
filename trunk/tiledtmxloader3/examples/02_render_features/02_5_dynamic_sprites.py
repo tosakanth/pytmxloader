@@ -83,7 +83,7 @@ def demo_pygame(file_name):
     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
 
     # dynamic sprites
-    my_sprites = [create_dude(world_map.pixel_width, world_map.pixel_height) for x in range(30)]
+    my_sprites = [create_dude(world_map.pixel_width, world_map.pixel_height) for x in range(300)]
 
     # layer add/remove dynamic sprites
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
@@ -167,7 +167,7 @@ def create_dude(world_width, world_height):
     position_y = randint(0, world_height)
     image = pygame.Surface((randint(40, 60), randint(70, 80)), pygame.SRCALPHA)
     image.fill((randint(0, 255), randint(0, 255), randint(0, 255), 200))
-    return Dude(image, position_x, position_x)
+    return Dude(image, position_x, position_y)
 
 #  -----------------------------------------------------------------------------
 
@@ -192,7 +192,7 @@ class Dude(tiledtmxloader.helperspygame.SpriteLayer.Sprite):
         """
         Update the movement of the dudue.
         """
-        if random.random() < 0.05:
+        if random.random() < 0.025:
             if self.velocity_x:
                 self.velocity_x = 0
                 self.velocity_y = 0
