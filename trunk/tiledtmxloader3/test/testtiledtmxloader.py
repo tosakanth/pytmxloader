@@ -4,7 +4,7 @@
 import sys
 import os
 p = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-print "inserting to sys.path: ", p
+print("inserting to sys.path: ", p)
 sys.path.insert(0, p)
 # print sys.path
 
@@ -46,9 +46,9 @@ class MapLoadTestsPygame(unittest.TestCase):
         try:
             world_map = tiledtmxloader.tmxreader.TileMapParser().parse_decode("invalid_version.tmx")
             self.fail("should have raised an exception because of wrong version")
-        except tiledtmxloader.tmxreader.VersionError, e:
+        except tiledtmxloader.tmxreader.VersionError as e:
             pass
-        except Exception, ex:
+        except Exception as ex:
             self.fail("should be a VersionError exception, not: " + str(ex))
 
     

@@ -6,11 +6,11 @@
 This is the pygame minimal example.
 
 """
-from __future__ import division
+
 
 __revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
-__author__ = u'DR0ID @ 2009-2011'
+__author__ = 'DR0ID @ 2009-2011'
 
 import sys
 import os
@@ -35,8 +35,8 @@ def main():
     args = sys.argv[1:]
     if len(args) < 1:
         path_to_map = os.path.join(os.pardir, "001-1.tmx")
-        print("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
-            (os.path.basename(__file__), path_to_map))
+        print(("usage: python %s your_map.tmx\n\nUsing default map '%s'\n" % \
+            (os.path.basename(__file__), path_to_map)))
     else:
         path_to_map = args[0]
 
@@ -104,7 +104,7 @@ def demo_pygame(file_name):
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.USEREVENT:
-                print "fps: ", clock.get_fps()
+                print("fps: ", clock.get_fps())
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
@@ -117,7 +117,7 @@ def demo_pygame(file_name):
                 elif event.key == pygame.K_LEFT:
                     cam_world_pos_x -= world_map.tilewidth
                 elif event.key == pygame.K_r:
-                    print "resetting layers!"
+                    print("resetting layers!")
                     sprite_layers = tiledtmxloader.helperspygame.get_layers_from_map(resources)
                 elif event.key in num_keys:
                     # find out which layer to manipulate
@@ -129,12 +129,12 @@ def demo_pygame(file_name):
                                  # (idx, sprite_layers[idx].get_collapse_level())
                         if sprite_layers[idx].contains_sprite(my_sprites[0]):
                             sprite_layers[idx].remove_sprites(my_sprites)
-                            print "removed dude sprites from layer", idx
+                            print("removed dude sprites from layer", idx)
                         else:
                             sprite_layers[idx].add_sprites(my_sprites)
-                            print "added dude sprites to layer", idx
+                            print("added dude sprites to layer", idx)
                     else:
-                        print "no such layer or more than 10 layers: " + str(idx)
+                        print("no such layer or more than 10 layers: " + str(idx))
 
         # update sprites position
         for spr in my_sprites:

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 """
@@ -44,7 +43,7 @@ Minimal OpenGL used. (Less of a learning curve.)
 
 __revision__ = "$Rev$"
 __version__ = "3.0.0." + __revision__[6:-2]
-__author__ = u'DR0ID @ 2009-2011'
+__author__ = 'DR0ID @ 2009-2011'
 
 
 #  -----------------------------------------------------------------------------
@@ -52,13 +51,13 @@ __author__ = u'DR0ID @ 2009-2011'
 
 import sys
 from xml.dom import minidom, Node
-import StringIO
+import io
 import os.path
 
 import pyglet
 
 import copy
-import tmxreader
+from . import tmxreader
 
 #  -----------------------------------------------------------------------------
 
@@ -274,6 +273,6 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         demo_pyglet(sys.argv[1])
     else:
-        print('Usage: python %s your_map.tmx' % os.path.basename(__file__))
+        print(('Usage: python %s your_map.tmx' % os.path.basename(__file__)))
 
 
