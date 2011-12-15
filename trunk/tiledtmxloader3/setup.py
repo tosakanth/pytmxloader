@@ -31,4 +31,5 @@ setup(
                'Programming Language :: Python :: 2',
                'License :: OSI Approved :: New BSD License',
                 ],
+    **extra
      )
