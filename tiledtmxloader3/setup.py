@@ -6,6 +6,9 @@ import sys
 sys.path.insert(0, 'tiledtmxloader')
 import tiledtmxloader
 
+extra = {}
+if sys.version_info >= (3,):
+    extra['use_2to3'] = True
 
 setup(
     name='tiledtmxloader',
