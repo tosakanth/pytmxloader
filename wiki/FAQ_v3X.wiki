@@ -3,7 +3,8 @@
 
 ----
 *Question: (2011-12-16)*
-    I get the error: NameError: global name '__file__' is not defined
+    I get the error: "NameError: global name '__file__' is not defined"
+
     Why do I get this error?
 
 *Answer:*
@@ -19,4 +20,3 @@
 
 
 ----
-
