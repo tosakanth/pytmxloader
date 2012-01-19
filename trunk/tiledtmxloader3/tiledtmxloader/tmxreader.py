@@ -46,9 +46,11 @@ __author__ = 'DR0ID @ 2009-2011'
 import sys
 from xml.dom import minidom, Node
 try:
+    # python 2.x
     import StringIO
     from StringIO import StringIO
 except:
+    # python 3.x
     from io import StringIO
 import os.path
 import struct
@@ -161,7 +163,78 @@ class TileMap(object):
         """
         for layer in self.layers:
             if not layer.is_object_group:
-                layer.decode()
+                self._decode_layer(layer)
+                layer.generate_2D()
+                
+    def _decode_layer(self, layer):
+        """
+        Converts the contents in a list of integers which are the gid of the 
+        used tiles. If necessairy it decodes and uncompresses the contents.
+        """
+        layer.decoded_content = []
+        if layer.encoded_content:
+            content = layer.encoded_content
+            if layer.encoding:
+                if layer.encoding.lower() == 'base64':
+                    content = decode_base64(content)
+                elif layer.encoding.lower() == 'csv':
+                    list_of_lines = content.split()
+                    for line in list_of_lines:
+                        layer.decoded_content.extend(line.split(','))
+                    self._fill_decoded_content(layer, list(map(int, \
+                                [val for val in layer.decoded_content if val])))
+                    content = ""
+                else:
+                    raise Exception('unknown data encoding %s' % \
+                                                                (layer.encoding))
+            else:
+                # in the case of xml the encoded_content already contains a 
+                # list of integers
+                self._fill_decoded_content(layer, list(map(int, layer.encoded_content)))
+                
+                content = ""
+            if layer.compression:
+                if layer.compression == 'gzip':
+                    content = decompress_gzip(content)
+                elif layer.compression == 'zlib':
+                    content = decompress_zlib(content)
+                else:
+                    raise Exception('unknown data compression %s' % \
+                                                            (layer.compression))
+        else:
+            raise Exception('no encoded content to decode')
+
+        # struc = struct.Struct("<" + "I" * layer.width)
+        # struc_unpack_from = struc.unpack_from
+        # layer_decoded_content_extend = layer.decoded_content.extend
+        # for idx in range(0, len(content), 4 * layer.width):
+            # val = struc_unpack_from(content, idx)
+            # layer_decoded_content_extend(val)
+####            
+        if content:
+            struc = struct.Struct("<" + "I" * layer.width * layer.height)
+            val = struc.unpack(content) # make Cell
+            # layer.decoded_content.extend(val)
+            
+            
+            # layer.decoded_content = array.array('I')
+            # layer.decoded_content.extend(val)
+            self._fill_decoded_content(layer, val)
+        
+
+            # arr = array.array('I')
+            # arr.fromlist(layer.decoded_content)
+            # layer.decoded_content = arr
+
+            # TODO: generate property grid here??
+
+    def _fill_decoded_content(self, layer, gid_list):
+        layer.decoded_content = array.array('I')
+        layer.decoded_content.extend(gid_list)
+    
+        
+        
+                
 #  -----------------------------------------------------------------------------
 
 
@@ -232,7 +305,7 @@ class TileImage(object):
     """
 
     def __init__(self):
-        self.id = 0
+        self.id = -1
         self.format = None
         self.source = None
         self.encoding = None # from <data>...</data>
@@ -263,9 +336,17 @@ class Tile(object):
 # referes to the image with that id in the tileset
 
     def __init__(self):
-        self.id = 0
+        self.id = -1
         self.images = [] # uses TileImage but either only id will be set or image data
         self.properties = {} # {name: value}
+
+#  -----------------------------------------------------------------------------
+
+class Cell(object):
+    
+    def __init__(self, idx):
+        self.idx = idx
+        self.porperties = None
 
 #  -----------------------------------------------------------------------------
 
@@ -323,63 +404,71 @@ class TileLayer(object):
         self.decoded_content = []
         self.visible = True
         self.properties = {} # {name: value}
-        self.content2D = None
         self.is_object_group = False    # ISSUE 9
+        self._content2D = None
 
+    # def decode(self):
+        # """
+        # Converts the contents in a list of integers which are the gid of the 
+        # used tiles. If necessairy it decodes and uncompresses the contents.
+        # """
+        # self.decoded_content = []
+        # if self.encoded_content:
+            # content = self.encoded_content
+            # if self.encoding:
+                # if self.encoding.lower() == 'base64':
+                    # content = decode_base64(content)
+                # elif self.encoding.lower() == 'csv':
+                    # list_of_lines = content.split()
+                    # for line in list_of_lines:
+                        # self.decoded_content.extend(line.split(','))
+                    # self.decoded_content = list(map(int, \
+                                # [val for val in self.decoded_content if val]))
+                    # content = ""
+                # else:
+                    # raise Exception('unknown data encoding %s' % \
+                                                                # (self.encoding))
+            # else:
+                # # in the case of xml the encoded_content already contains a 
+                # # list of integers
+                # self.decoded_content = list(map(int, self.encoded_content))
+                # content = ""
+            # if self.compression:
+                # if self.compression == 'gzip':
+                    # content = decompress_gzip(content)
+                # elif self.compression == 'zlib':
+                    # content = decompress_zlib(content)
+                # else:
+                    # raise Exception('unknown data compression %s' % \
+                                                            # (self.compression))
+        # else:
+            # raise Exception('no encoded content to decode')
 
-    def decode(self):
-        """
-        Converts the contents in a list of integers which are the gid of the 
-        used tiles. If necessairy it decodes and uncompresses the contents.
-        """
-        self.decoded_content = []
-        if self.encoded_content:
-            content = self.encoded_content
-            if self.encoding:
-                if self.encoding.lower() == 'base64':
-                    content = decode_base64(content)
-                elif self.encoding.lower() == 'csv':
-                    list_of_lines = content.split()
-                    for line in list_of_lines:
-                        self.decoded_content.extend(line.split(','))
-                    self.decoded_content = list(map(int, \
-                                [val for val in self.decoded_content if val]))
-                    content = ""
-                else:
-                    raise Exception('unknown data encoding %s' % \
-                                                                (self.encoding))
-            else:
-                # in the case of xml the encoded_content already contains a 
-                # list of integers
-                self.decoded_content = list(map(int, self.encoded_content))
-                content = ""
-            if self.compression:
-                if self.compression == 'gzip':
-                    content = decompress_gzip(content)
-                elif self.compression == 'zlib':
-                    content = decompress_zlib(content)
-                else:
-                    raise Exception('unknown data compression %s' % \
-                                                            (self.compression))
-        else:
-            raise Exception('no encoded content to decode')
+        # # struc = struct.Struct("<" + "I" * self.width)
+        # # struc_unpack_from = struc.unpack_from
+        # # self_decoded_content_extend = self.decoded_content.extend
+        # # for idx in range(0, len(content), 4 * self.width):
+            # # val = struc_unpack_from(content, idx)
+            # # self_decoded_content_extend(val)
+# ####            
+        # struc = struct.Struct("<" + "I" * self.width * self.height)
+        # val = struc.unpack(content) # make Cell
+        # # self.decoded_content.extend(val)
+        
+        
+        # self.decoded_content = array.array('I')
+        # self.decoded_content.extend(val)
+        
 
-        struc = struct.Struct("<" + "I" * self.width)
-        struc_unpack_from = struc.unpack_from
-        self_decoded_content_extend = self.decoded_content.extend
-        for idx in range(0, len(content), 4 * self.width):
-            val = struc_unpack_from(content, idx)
-            self_decoded_content_extend(val)
+        # # arr = array.array('I')
+        # # arr.fromlist(self.decoded_content)
+        # # self.decoded_content = arr
 
-        arr = array.array('I')
-        arr.fromlist(self.decoded_content)
-        self.decoded_content = arr
+        # # TODO: generate property grid here??
 
-        # TODO: generate property grid here??
+        # self._gen_2D()
 
-        self._gen_2D()
-
-    def _gen_2D(self):
+    def generate_2D(self):
         self.content2D = []
 
         # generate the needed lists and fill them
