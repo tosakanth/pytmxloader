@@ -92,12 +92,16 @@ class ResourceLoaderPygame(tmxreader.AbstractResourceLoader):
         # if the image size does not match a multiple of tile_width or
         # tile_height it will mess up the number of tiles resulting in
         # wrong GID's for the tiles
-        width = (width // tile_width) * tile_width
-        height = (height // tile_height) * tile_height
+        # ISSUE 19
+        # considering spacing too
+        tile_width_spacing = tile_width + spacing
+        width = (width // tile_width_spacing) * tile_width_spacing
+        tile_height_spacing = tile_height + spacing
+        height = (height // tile_height_spacing) * tile_height_spacing
         images = []
-        for ypos in range(margin, height, tile_height + spacing):
-            for xpos in range(margin, width, tile_width + spacing):
-                img_part = self._load_image_part(filename, xpos, ypos, \
+        for y_pos in range(margin, height, tile_height_spacing):
+            for x_pos in range(margin, width, tile_width_spacing):
+                img_part = self._load_image_part(filename, x_pos, y_pos, \
                                             tile_width, tile_height, colorkey)
                 images.append(img_part)
         return images
@@ -1126,8 +1130,8 @@ class IsometricRendererPygame(RendererPygame):
     
     :Warning: !!EXPERIMENTAL!!
     """
-    
-    
+
+
     def render_layer(self, surf, layer, clip_sprites=True, \
                                     sort_key=lambda spr: spr.get_draw_cond()):
         """
@@ -1176,14 +1180,14 @@ class IsometricRendererPygame(RendererPygame):
             cam_world_pos_x, cam_world_pos_y = self.world_to_screen(layer, cam_world_pos_x / layer.tilewidth, cam_world_pos_y / layer.tileheight, surf.get_size(), cam_world_pos_x, cam_world_pos_y)
             cam_world_pos_x -= surf.get_size()[0] // 2
             cam_world_pos_y -= surf.get_size()[1] // 2
-            
+
             # cam_world_pos_x -= cam_rect.width // 2
             # cam_world_pos_y -= cam_rect.height // 2
             # print("0,0", self.world_to_screen(layer, 0, 0))
             # cam_world_pos_x = 0
             # cam_world_pos_y = 0
             print("cam pos:", cam_world_pos_x, cam_world_pos_y, cam_rect, cam_rect.center)
-            
+
             # camera bounds, restricting number of tiles to draw
             # left = int(round(float(cam_world_pos_x) // layer.tilewidth))
             # right = int(round(float(cam_world_pos_x + cam_rect.width) // \
@@ -1361,7 +1365,7 @@ class IsometricRendererPygame(RendererPygame):
         # TODO: also use layer.x and layer.y offset
         return (screen_x + self._render_cam_rect.x * layer.paralax_factor_x, \
                 screen_y + self._render_cam_rect.y * layer.paralax_factor_y)
-    
+
     def world_to_screen(self, layer, world_x, world_y, screen_size, cam_w_pos_x, cam_w_pos_y):
         """
         TODO:
