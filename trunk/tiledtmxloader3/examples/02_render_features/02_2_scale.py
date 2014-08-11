@@ -117,7 +117,7 @@ def demo_pygame(file_name):
                     idx = num_keys.index(event.key)
                     # make sure this layer exists
                     if idx < len(world_map.layers):
-                        growth = 0.05
+                        growth = 0.45
                         if pygame.key.get_mods() & pygame.KMOD_SHIFT:
                             growth *= -1
                         # get the original layer to prevent blurring of images

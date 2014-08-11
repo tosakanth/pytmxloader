@@ -83,6 +83,10 @@ class ResourceLoaderPygame(tmxreader.AbstractResourceLoader):
                                                     bool(gid & self.FLIP_X), \
                                                     bool(gid & self.FLIP_Y))
                             self.indexed_tiles[gid] = (offx, offy, img)
+                        elif gid == 0: # 0 means no tile!
+                            continue
+                        else:
+                            raise Exception("gid not found " + str(gid))
 
     def _load_image_parts(self, filename, margin, spacing, \
                           tile_width, tile_height, colorkey=None): #-> [images]
@@ -303,7 +307,7 @@ class SpriteLayer(object):
                 Height scale factor in range (0, ...]
         """
         if layer_orig.is_object_group:
-            return layer
+            return layer_orig
 
         layer = SpriteLayer(layer_orig.layer_idx, layer_orig._resource_loader)
 
@@ -337,11 +341,9 @@ class SpriteLayer(object):
                     if w != ceil(new_w) or h != ceil(new_h):
                         new_w = ceil(new_w)
                         new_h = ceil(new_h)
-                        image = pygame.transform.smoothscale(sprite.image, \
-                                                                 (new_w, new_h))
+                        image = pygame.transform.smoothscale(sprite.image, (new_w, new_h))
                         x, y = sprite.rect.topleft
-                        rect = pygame.Rect(x * scale_w, y * scale_h, \
-                                                                new_w, new_h)
+                        rect = pygame.Rect(x * scale_w, y * scale_h, new_w, new_h)
 
                     layer.content2D[yidx][xidx] = \
                                                 SpriteLayer.Sprite(image, rect)

@@ -135,9 +135,9 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
                 The margin around the image.
             spacing : int
                 The space between the tile images.
-            tilewidth : int
+            tile_width : int
                 The width of a single tile.
-            tileheight : int
+            tile_height : int
                 The height of a single tile.
             colorkey : ???
                 Unused. (Intended for pygame.)
@@ -147,13 +147,44 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         """
         source_img = self._load_image(filename)
         # ISSUE 16 fixed wrong sized tilesets
-        height = (source_img.height // tile_height) * tile_height
-        width = (source_img.width // tile_width) * tile_width
-        images = []
+        # ISSUE 20 fixed messed up tiles for pyglet
+
+        # height = (source_img.height // tile_height) * tile_height
+        # width = (source_img.width // tile_width) * tile_width
+        # images = []
+        # # Reverse the map column reading to compensate for pyglet's y-origin.
+        # for y in range(height - tile_height, margin - tile_height, -tile_height - spacing):
+        #     for x in range(margin, width, tile_width + spacing):
+        #         img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
+        #         images.append(img_part)
+
+        cropped_width = source_img.width - (margin * 2)
+        if cropped_width == tile_width:
+            tiles_x = 1
+        else:
+            # Basic math equation to determine the number of tiles inside a row
+            # 1) tiles_x * tile_width + (tiles_x-1) * spacing == cropped_width
+            # 2) cropped_width == tiles_x * (tile_width + spacing) - spacing
+            tiles_x = (cropped_width + spacing) / (tile_width + spacing)
+        cropped_height = source_img.height - (margin * 2)
+        if cropped_height == tile_height:
+            tiles_y = 1
+        else:
+            tiles_y = (cropped_height + spacing) / (tile_height + spacing)
+        assert tiles_x % 1 == 0 and tiles_y % 1 == 0, "Bad size for {}"\
+            " : image {}x{}, tile {}x{}, margin {}, spacing {}".format(
+                filename, source_img.width, source_img.height,
+                tile_width, tile_height, margin, spacing)
+        tiles_x = int(tiles_x)
+        tiles_y = int(tiles_y)
+
         # Reverse the map column reading to compensate for pyglet's y-origin.
-        for y in range(height - tile_height, margin - tile_height, -tile_height - spacing):
-            for x in range(margin, width, tile_width + spacing):
-                img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
+        images = []
+        for y in range(tiles_y-1, -1, -1):
+            for x in range(tiles_x):
+                img_part = self._load_image_part(filename,
+                    margin + x * (tile_width + spacing),
+                    margin + y * (tile_height + spacing), tile_width, tile_height)
                 images.append(img_part)
         return images
 
@@ -243,8 +274,8 @@ def demo_pyglet(file_name):
             # Should you as a user of tmxreader need this layer,
             # I hope to have a separate demo using objects as well.
             continue
-        group = pyglet.graphics.OrderedGroup(group_num)
         for ytile in range(layer.height):
+            group = pyglet.graphics.OrderedGroup(group_num)
             for xtile in range(layer.width):
                 image_id = layer.content2D[xtile][ytile]
                 if image_id:
@@ -253,9 +284,9 @@ def demo_pyglet(file_name):
                     # the tiles to their correct images. This reversal must be
                     # done again to render the rows in the correct order.
                     sprites.append(pyglet.sprite.Sprite(image_file,
-                        world_map.tilewidth * xtile,
-                        world_map.tileheight * (layer.height - ytile),
-                        batch=batch, group=group))
+                                                        world_map.tilewidth * xtile,
+                                                        world_map.tileheight * (layer.height - ytile),
+                                                        batch=batch, group=group))
 
     pyglet.clock.schedule_interval(update, frames_per_sec)
     pyglet.app.run()
