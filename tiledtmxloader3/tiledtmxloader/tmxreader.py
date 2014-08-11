@@ -59,7 +59,15 @@ import array
 #  -----------------------------------------------------------------------------
 class TileMap(object):
     """
-
+    {mapattr: value, 
+        layers: [{layerattr, data: [gid]}, 
+                 {objects: [{objectattr}]}
+                 ], 
+        tilesets: [tileset]
+        }
+    
+    
+    
     The TileMap holds all the map data.
 
     :Ivariables:
@@ -79,18 +87,20 @@ class TileMap(object):
             list of TileSet
         properties : dict
             the propertis set in the editor, name-value pairs, strings
-        pixel_width : int
-            width of the map in pixels
-        pixel_height : int
-            height of the map in pixels
         layers : list
             list of TileLayer
-        map_file_name : dict
+        map_file_name : string
             file name of the map
+        tiles : dict
+            dict containint {gid : Tile}
         named_layers : dict of string:TledLayer
             dict containing {name : TileLayer}
         named_tile_sets : dict
             dict containing {name : TileSet}
+        pixel_width : int
+            width of the map in pixels
+        pixel_height : int
+            height of the map in pixels
 
     """
 
@@ -112,6 +122,7 @@ class TileMap(object):
         self.height = 0
         self.version = 0
         self.tile_sets = [] # TileSet
+        self.cells = {} # {gid : Cell}
         # ISSUE 9: object groups should be in the same order as layers
         self.layers = [] # WorldTileLayer <- what order? back to front (guessed)
         # self.object_groups = []
@@ -122,6 +133,7 @@ class TileMap(object):
         self.named_layers = {} # {name: layer}
         self.named_tile_sets = {} # {name: tile_set}
         self.map_file_name = ""
+        self.tiles = {} # {gid: Tile}
 
     def convert(self):
         """
@@ -204,34 +216,16 @@ class TileMap(object):
         else:
             raise Exception('no encoded content to decode')
 
-        # struc = struct.Struct("<" + "I" * layer.width)
-        # struc_unpack_from = struc.unpack_from
-        # layer_decoded_content_extend = layer.decoded_content.extend
-        # for idx in range(0, len(content), 4 * layer.width):
-            # val = struc_unpack_from(content, idx)
-            # layer_decoded_content_extend(val)
-####            
         if content:
             struc = struct.Struct("<" + "I" * layer.width * layer.height)
-            val = struc.unpack(content) # make Cell
-            # layer.decoded_content.extend(val)
-            
-            
-            # layer.decoded_content = array.array('I')
-            # layer.decoded_content.extend(val)
+            val = struc.unpack(content) 
             self._fill_decoded_content(layer, val)
-        
-
-            # arr = array.array('I')
-            # arr.fromlist(layer.decoded_content)
-            # layer.decoded_content = arr
-
-            # TODO: generate property grid here??
 
     def _fill_decoded_content(self, layer, gid_list):
         layer.decoded_content = array.array('I')
-        layer.decoded_content.extend(gid_list)
+        layer.decoded_content.extend(gid_list)# make Cell
     
+        # TODO: generate property grid here??
         
         
                 
@@ -305,7 +299,7 @@ class TileImage(object):
     """
 
     def __init__(self):
-        self.id = -1
+        self.id = 0
         self.format = None
         self.source = None
         self.encoding = None # from <data>...</data>
@@ -327,6 +321,8 @@ class Tile(object):
             list of TileImage, either its 'id' or 'image data' will be set
         properties : dict of name:value
             the propertis set in the editor, name-value pairs
+        tile_set : TileSet
+            the tileset this tile belongs to
     """
 
 # [20:22]	DR0ID_: to sum up: there are two use cases,
@@ -335,18 +331,39 @@ class Tile(object):
 # the other case where a tileset is present then it
 # referes to the image with that id in the tileset
 
-    def __init__(self):
-        self.id = -1
+    def __init__(self, gid):
+        self.id = 0
+        self.gid = gid
         self.images = [] # uses TileImage but either only id will be set or image data
         self.properties = {} # {name: value}
 
 #  -----------------------------------------------------------------------------
 
 class Cell(object):
-    
-    def __init__(self, idx):
-        self.idx = idx
-        self.porperties = None
+    """
+    A single tile.
+
+    :Ivariables:
+        id : int
+            id of the tile gid = TileSet.firstgid + Tile.id
+        images : list of :class:TileImage
+            list of TileImage, either its 'id' or 'image data' will be set
+        properties : dict of name:value
+            the propertis set in the editor, name-value pairs
+        tile_set : TileSet
+            the tileset this tile belongs to
+    """
+
+# [20:22]	DR0ID_: to sum up: there are two use cases,
+# if the tile element has a child element 'image' then tile is
+# standalone with its own id and
+# the other case where a tileset is present then it
+# referes to the image with that id in the tileset
+
+    def __init__(self, gid, tile_set):
+        self.gid = gid
+        self.properties = {} # {name: value}
+        self.tile_set = tile_set
 
 #  -----------------------------------------------------------------------------
 
@@ -397,7 +414,7 @@ class TileLayer(object):
         self.pixel_width = 0
         self.pixel_height = 0
         self.name = None
-        self.opacity = -1
+        self.opacity = 0
         self.encoding = None
         self.compression = None
         self.encoded_content = None
@@ -485,7 +502,6 @@ class TileLayer(object):
             for x in range(int(self.width)):
                 output += str(self.decoded_content[num])
                 num += 1
-            print(output)
 
     def convert(self):
         self.opacity = float(self.opacity)
@@ -598,27 +614,31 @@ class MapObject(object):
         self.properties = {} # {name: value}
 
 #  -----------------------------------------------------------------------------
-def decode_base64(in_str):
+def decode_base64(in_str, string_encoding='latin-1'):
     """
     Decodes a base64 string and returns it.
 
     :Parameters:
         in_str : string
             base64 encoded string
+        string_encoding : string
+            the encoding of the string, default: 'latin-1'
 
     :returns: decoded string
     """
     import base64
-    return base64.decodestring(in_str.encode('latin-1'))
+    return base64.decodestring(in_str.encode(string_encoding))
 
 #  -----------------------------------------------------------------------------
-def decompress_gzip(in_str):
+def decompress_gzip(in_str, string_encoding='latin-1'):
     """
     Uncompresses a gzip string and returns it.
 
     :Parameters:
         in_str : string
             gzip compressed string
+        string_encoding : string
+            the encoding of the string, default: 'latin-1'
 
     :returns: uncompressed string
     """
@@ -629,7 +649,7 @@ def decompress_gzip(in_str):
         copmressed_stream = BytesIO(in_str)
     else:
         # gzip can only handle file object therefore using StringIO
-        copmressed_stream = StringIO(in_str.decode("latin-1"))
+        copmressed_stream = StringIO(in_str.decode(string_encoding))
     gzipper = gzip.GzipFile(fileobj=copmressed_stream)
     content = gzipper.read()
     gzipper.close()
@@ -687,40 +707,48 @@ class TileMapParser(object):
     def _build_tile_set(self, tile_set_node, world_map):
         tile_set = TileSet()
         self._set_attributes(tile_set_node, tile_set)
+
         if hasattr(tile_set, "source"):
-            tile_set = self._parse_tsx(tile_set.source, tile_set, world_map)
+            tile_set = self._parse_tsx(tile_set, world_map)
         else:
             tile_set = self._get_tile_set(tile_set_node, tile_set, \
-                                                            self.map_file_name)
+                                                  self.map_file_name, world_map)
         world_map.tile_sets.append(tile_set)
 
-    def _parse_tsx(self, file_name, tile_set, world_map):
+    def _parse_tsx(self, tile_set, world_map):
+        file_name = tile_set.source
         # ISSUE 5: the *.tsx file is probably relative to the *.tmx file
         if not os.path.isabs(file_name):
             # print "map file name", self.map_file_name
             file_name = self._get_abs_path(self.map_file_name, file_name)
-        # print "tsx filename: ", file_name
-        # would be more elegant to use  "with open(file_name, "rb") as file:" 
-        # but that is python 2.6
-        file = None
-        try:
-            file = open(file_name, "rb")
+        with open(file_name, "rb") as file:
             dom = minidom.parseString(file.read())
-        finally:
-            if file:
-                file.close()
+        # tile_set = TileSet()
         for node in self._get_nodes(dom.childNodes, 'tileset'):
-            tile_set = self._get_tile_set(node, tile_set, file_name)
+            # TODO: is there only one Tileset per *.tsx file????
+            self._set_attributes(node, tile_set)
+            tile_set = self._get_tile_set(node, tile_set, file_name, world_map)
             break
         return tile_set
 
-    def _get_tile_set(self, tile_set_node, tile_set, base_path):
+    def _get_tile_set(self, tile_set_node, tile_set, base_path, world_map):
+        self._build_tile_set_images(tile_set_node, tile_set, base_path)
+        firstgid = int(tile_set.firstgid)
+        for image in tile_set.images:
+            for id in range(0, (int(image.width) // int(tile_set.tilewidth)) * (int(image.height) // int(tile_set.tileheight))):
+                gid = firstgid + id
+                # TODO: cell creation should be lazy done when layers are read in????
+                cell = Cell(gid, tile_set)
+                cell.properties = dict(tile_set.properties)
+                world_map.tiles[gid] = cell
+        for node in self._get_nodes(tile_set_node.childNodes, 'tile'):
+            self._build_tile_set_tile(node, tile_set, world_map)
+        return tile_set
+
+    def _build_tile_set_images(self, tile_set_node, tile_set, base_path):
+        # printer(tile_set)
         for node in self._get_nodes(tile_set_node.childNodes, 'image'):
             self._build_tile_set_image(node, tile_set, base_path)
-        for node in self._get_nodes(tile_set_node.childNodes, 'tile'):
-            self._build_tile_set_tile(node, tile_set)
-        self._set_attributes(tile_set_node, tile_set)
-        return tile_set
 
     def _build_tile_set_image(self, image_node, tile_set, base_path):
         image = TileImage()
@@ -731,6 +759,7 @@ class TileMapParser(object):
             image.content = node.childNodes[0].nodeValue
         image.source = self._get_abs_path(base_path, image.source) # ISSUE 5
         tile_set.images.append(image)
+        # printer(image)
 
     def _get_abs_path(self, base, relative):
         if os.path.isabs(relative):
@@ -739,10 +768,12 @@ class TileMapParser(object):
             base = os.path.dirname(base)
         return os.path.abspath(os.path.join(base, relative))
 
-    def _build_tile_set_tile(self, tile_set_node, tile_set):
-        tile = Tile()
-        self._set_attributes(tile_set_node, tile)
-        for node in self._get_nodes(tile_set_node.childNodes, 'image'):
+    def _build_tile_set_tile(self, tile_set_tile_node, tile_set, world_map):
+        tile_gid = int(tile_set.firstgid) + int(tile_set_tile_node.attributes.get("id").nodeValue)
+        tile = Tile(tile_gid)
+        self._set_attributes(tile_set_tile_node, tile)
+        world_map.tiles[tile_gid].properties.update(tile.properties)
+        for node in self._get_nodes(tile_set_tile_node.childNodes, 'image'):
             self._build_tile_set_tile_image(node, tile)
         tile_set.tiles.append(tile)
 
@@ -762,7 +793,6 @@ class TileMapParser(object):
             if layer.encoding:
                 layer.encoded_content = node.lastChild.nodeValue
             else:
-                #print 'has childnodes', node.hasChildNodes()
                 layer.encoded_content = []
                 for child in node.childNodes:
                     if child.nodeType == Node.ELEMENT_NODE and \
@@ -829,20 +859,14 @@ class TileMapParser(object):
         Parses the given map. Does no decoding nor loading of the data.
         :return: instance of TileMap
         """
-        # would be more elegant to use  
-        # "with open(file_name, "rb") as tmx_file:" but that is python 2.6
         self.map_file_name = os.path.abspath(file_name)
-        tmx_file = None
-        try:
-            tmx_file = open(self.map_file_name, "rb")
+        with open(self.map_file_name, "rb") as tmx_file:
             dom = minidom.parseString(tmx_file.read())
-        finally:
-            if tmx_file:
-                tmx_file.close()
         for node in self._get_nodes(dom.childNodes, 'map'):
             world_map = self._build_world_map(node)
             break
         world_map.map_file_name = self.map_file_name
+        # printer(world_map)
         world_map.convert()
         return world_map
 
