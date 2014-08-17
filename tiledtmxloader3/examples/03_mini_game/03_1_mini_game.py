@@ -43,6 +43,12 @@ def main():
 
 #  -----------------------------------------------------------------------------
 
+def get_sprite_layer(idx, sprite_layers, layers):
+    if idx < len(layers) and not layers[idx].is_object_group:
+        if len(sprite_layers) > idx:
+            return sprite_layers[idx]
+    return None
+
 def demo_pygame(file_name):
     """
     Example showing how to use the paralax scrolling feature.
@@ -91,7 +97,9 @@ def demo_pygame(file_name):
     sprite_layers = [layer for layer in sprite_layers if not layer.is_object_group]
 
     # add the hero the the right layer, it can be changed using 0-9 keys
-    sprite_layers[1].add_sprite(hero)
+    layer = get_sprite_layer(1, sprite_layers, world_map.layers)
+    if layer is not None:
+        layer.add_sprite(hero)
 
     # layer add/remove hero keys
     num_keys = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, \
@@ -122,20 +130,23 @@ def demo_pygame(file_name):
                     idx = num_keys.index(event.key)
                     # make sure this layer exists
                     if idx < len(world_map.layers):
-                        if sprite_layers[idx].contains_sprite(hero):
-                            sprite_layers[idx].remove_sprite(hero)
-                            print("removed hero sprite from layer", idx)
-                        else:
-                            sprite_layers[idx].add_sprite(hero)
-                            print("added hero sprite to layer", idx)
+                        layer = get_sprite_layer(idx, sprite_layers, world_map.layers)
+                        if layer is not None:
+                            if layer.contains_sprite(hero):
+                                layer.remove_sprite(hero)
+                                print("removed hero sprite from layer", idx)
+                            else:
+                                layer.add_sprite(hero)
+                                print("added hero sprite to layer", idx)
                     else:
                         print("no such layer or more than 10 layers: " + str(idx))
 
         # find directions
-        direction_x = pygame.key.get_pressed()[pygame.K_RIGHT] - \
-                                        pygame.key.get_pressed()[pygame.K_LEFT]
-        direction_y = pygame.key.get_pressed()[pygame.K_DOWN] - \
-                                        pygame.key.get_pressed()[pygame.K_UP]
+        pressed = pygame.key.get_pressed()
+        direction_x = pressed[pygame.K_RIGHT] - \
+                                        pressed[pygame.K_LEFT]
+        direction_y = pressed[pygame.K_DOWN] - \
+                                        pressed[pygame.K_UP]
 
         # make sure the hero moves with same speed in all directions (diagonal!)
         dir_len = math.hypot(direction_x, direction_y)
