@@ -14,14 +14,14 @@ from . import tmxreader
 try:
     from . import helperspygame
     __all__.append("helperspygame")
-except:
-    pass
+except Exception as e:
+    print("error loading helperspygame" + str(e))
 
 try:
     from . import helperspyglet
     __all__.append("helperspyglet")
-except:
-    pass
+except Exception as e:
+    print("error loading helperspyglet" + str(e))
 
 
 # Versioning scheme based on: http://en.wikipedia.org/wiki/Versioning#Designating_development_stage

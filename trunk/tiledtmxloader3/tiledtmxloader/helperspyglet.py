@@ -24,7 +24,7 @@ Minimal OpenGL used. (Less of a learning curve.)
 
 # Versioning scheme based on: http://en.wikipedia.org/wiki/Versioning#Designating_development_stage
 #
-#   +-- api change, probably incompatible with older versions
+# +-- api change, probably incompatible with older versions
 #   |     +-- enhancements but no api change
 #   |     |
 # major.minor[.build[.revision]]
@@ -50,14 +50,12 @@ __author__ = 'DR0ID @ 2009-2011'
 
 
 import sys
-from xml.dom import minidom, Node
-import io
 import os.path
+import copy
 
 import pyglet
+import tmxreader
 
-import copy
-from . import tmxreader
 
 #  -----------------------------------------------------------------------------
 
@@ -85,27 +83,26 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
                     if gid not in self.indexed_tiles:
                         if gid & self.FLIP_X or gid & self.FLIP_Y:
                             image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
-                            offx, offy, img = self.indexed_tiles[image_gid]
+                            offset_x, offset_y, img = self.indexed_tiles[image_gid]
                             # TODO: how to flip it? this does mix textures and image classes
                             img = copy.deepcopy(img)
                             tex = img.get_texture()
                             tex.anchor_x = tex.width // 2
                             tex.anchor_y = tex.height // 2
                             tex2 = tex.get_transform(bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
-                            # img2 = pyglet.image.ImageDataRegion(img.x, img.y, tex2.width, tex2.height, tex2.image_data))
                             tex.anchor_x = 0
                             tex.anchor_y = 0
-                            self.indexed_tiles[gid] = (offx, offy, tex2)
+                            self.indexed_tiles[gid] = (offset_x, offset_y, tex2)
 
-    def _load_image(self, filename, fileobj=None):
+    def _load_image(self, filename, file_like_obj=None):
         """Load a single image.
 
-        Images are loaded only once. Subsequence loads call upon a cache.
+        Images are loaded only once. Subsequent load calls  are cached.
 
         :Parameters:
             filename : string
                 Path to the file to be loaded.
-            fileobj : file
+            file_like_obj : file
                 A file-like object which pyglet can decode.
 
         :rtype: A subclass of AbstractImage.
@@ -113,11 +110,16 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         """
         img = self._img_cache.get(filename, None)
         if img is None:
-            if fileobj:
-                img = pyglet.image.load(filename, fileobj,
-                    pyglet.image.codecs.get_decoders("*.png")[0])
+            if file_like_obj:
+                img = pyglet.image.load(filename, file_like_obj,
+                                        pyglet.image.codecs.get_decoders("*.png")[0])
             else:
-                img = pyglet.image.load(filename)
+                # add the file to the resources so it goes into the same texture atlas
+                directory_name = os.path.dirname(filename)
+                if directory_name not in pyglet.resource.path:
+                    pyglet.resource.path.append(directory_name)
+                    pyglet.resource.reindex()
+                img = pyglet.resource.image(os.path.basename(filename))
             self._img_cache[filename] = img
         return img
 
@@ -152,7 +154,7 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         # height = (source_img.height // tile_height) * tile_height
         # width = (source_img.width // tile_width) * tile_width
         # images = []
-        # # Reverse the map column reading to compensate for pyglet's y-origin.
+        # # Reverse the map column reading to compensate for pyglets y-origin.
         # for y in range(height - tile_height, margin - tile_height, -tile_height - spacing):
         #     for x in range(margin, width, tile_width + spacing):
         #         img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
@@ -171,20 +173,20 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
             tiles_y = 1
         else:
             tiles_y = (cropped_height + spacing) / (tile_height + spacing)
-        assert tiles_x % 1 == 0 and tiles_y % 1 == 0, "Bad size for {}"\
-            " : image {}x{}, tile {}x{}, margin {}, spacing {}".format(
-                filename, source_img.width, source_img.height,
-                tile_width, tile_height, margin, spacing)
+        assert tiles_x % 1 == 0 and tiles_y % 1 == 0, "Bad size for {}" \
+                                                      " : image {}x{}, tile {}x{}, margin {}, spacing {}".format(
+            filename, source_img.width, source_img.height,
+            tile_width, tile_height, margin, spacing)
         tiles_x = int(tiles_x)
         tiles_y = int(tiles_y)
 
         # Reverse the map column reading to compensate for pyglet's y-origin.
         images = []
-        for y in range(tiles_y-1, -1, -1):
+        for y in range(tiles_y - 1, -1, -1):
             for x in range(tiles_x):
                 img_part = self._load_image_part(filename,
-                    margin + x * (tile_width + spacing),
-                    margin + y * (tile_height + spacing), tile_width, tile_height)
+                                                 margin + x * (tile_width + spacing),
+                                                 margin + y * (tile_height + spacing), tile_width, tile_height)
                 images.append(img_part)
         return images
 
@@ -217,9 +219,12 @@ def demo_pyglet(file_name):
     # window and the update function. Note that the position is in integers to
     # match Pyglet Sprites. Using floating-point numbers causes graphical
     # problems. See http://groups.google.com/group/pyglet-users/browse_thread/thread/52f9ae1ef7b0c8fa?pli=1
-    delta = [200, -world_map.pixel_height+150]
+    delta = [200, -world_map.pixel_height + 150]
     frames_per_sec = 1.0 / 30.0
-    window = pyglet.window.Window()
+    window = pyglet.window.Window(vsync=False)
+    fps_display = pyglet.clock.ClockDisplay()
+    pyglet.clock.set_fps_limit(0)
+
 
     @window.event
     def on_draw():
@@ -241,6 +246,9 @@ def demo_pyglet(file_name):
         # [21:09]	thorbjorn: Right, so maybe once for the bottom layers, then your complicated stuff, and then another time for the layers on top.
 
         batch.draw()
+
+        glLoadIdentity()
+        fps_display.draw()
 
     keys = pyglet.window.key.KeyStateHandler()
     window.push_handlers(keys)
@@ -266,7 +274,8 @@ def demo_pyglet(file_name):
     # Generate the graphics for every visible tile.
     batch = pyglet.graphics.Batch()
     sprites = []
-    for group_num, layer in enumerate(world_map.layers):
+    group_num = 0
+    for layer in world_map.layers:
         if not layer.visible:
             continue
         if layer.is_object_group:
@@ -274,19 +283,21 @@ def demo_pyglet(file_name):
             # Should you as a user of tmxreader need this layer,
             # I hope to have a separate demo using objects as well.
             continue
-        for ytile in range(layer.height):
+        for y_tile in range(layer.height):
             group = pyglet.graphics.OrderedGroup(group_num)
-            for xtile in range(layer.width):
-                image_id = layer.content2D[xtile][ytile]
-                if image_id:
+            group_num += 1
+            for x_tile in range(layer.width):
+                image_id = layer.content2D[x_tile][y_tile]
+                if image_id > 0:
                     image_file = resources.indexed_tiles[image_id][2]
                     # The loader needed to load the images upside-down to match
                     # the tiles to their correct images. This reversal must be
                     # done again to render the rows in the correct order.
                     sprites.append(pyglet.sprite.Sprite(image_file,
-                                                        world_map.tilewidth * xtile,
-                                                        world_map.tileheight * (layer.height - ytile),
-                                                        batch=batch, group=group))
+                                                        world_map.tilewidth * x_tile,
+                                                        world_map.tileheight * (layer.height - y_tile),
+                                                        batch=batch,
+                                                        group=group))
 
     pyglet.clock.schedule_interval(update, frames_per_sec)
     pyglet.app.run()
