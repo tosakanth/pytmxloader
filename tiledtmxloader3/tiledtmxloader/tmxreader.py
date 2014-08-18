@@ -890,6 +890,7 @@ class AbstractResourceLoader(object):
 
     FLIP_X = 1 << 31
     FLIP_Y = 1 << 30
+    FLIP_DIAGONAL = 1 << 29
 
     def __init__(self):
         self.indexed_tiles = {} # {gid: (offsetx, offsety, image}
@@ -963,6 +964,7 @@ class AbstractResourceLoader(object):
 
     def load(self, tile_map):
         """
+        Loads the image data into the single images.
         """
         self.world_map = tile_map
         for tile_set in tile_map.tile_sets:

@@ -81,17 +81,26 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
             if not layer.is_object_group:
                 for gid in layer.decoded_content:
                     if gid not in self.indexed_tiles:
-                        if gid & self.FLIP_X or gid & self.FLIP_Y:
-                            image_gid = gid & ~(self.FLIP_X | self.FLIP_Y)
+                        if gid & self.FLIP_X or gid & self.FLIP_Y or gid & self.FLIP_DIAGONAL:
+                            image_gid = gid & ~(self.FLIP_X | self.FLIP_Y | self.FLIP_DIAGONAL)
                             offset_x, offset_y, img = self.indexed_tiles[image_gid]
                             # TODO: how to flip it? this does mix textures and image classes
-                            img = copy.deepcopy(img)
-                            tex = img.get_texture()
-                            tex.anchor_x = tex.width // 2
-                            tex.anchor_y = tex.height // 2
-                            tex2 = tex.get_transform(bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y))
-                            tex.anchor_x = 0
-                            tex.anchor_y = 0
+                            # img = copy.deepcopy(img)
+                            tex2 = img.get_texture()
+                            orig_anchor_x = tex2.anchor_x
+                            orig_anchor_y = tex2.anchor_y
+
+                            tex2.anchor_x = tex2.width // 2
+                            tex2.anchor_y = tex2.height // 2
+                            if gid & self.FLIP_DIAGONAL:
+                                if gid & self.FLIP_X:
+                                    tex2 = tex2.get_transform(False, False, 90)
+                                elif gid & self.FLIP_Y:
+                                    tex2 = tex2.get_transform(False, False, 270)
+                            else:
+                                tex2 = tex2.get_transform(bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y), 0)
+                            tex2.anchor_x = orig_anchor_x
+                            tex2.anchor_y = orig_anchor_y
                             self.indexed_tiles[gid] = (offset_x, offset_y, tex2)
 
     def _load_image(self, filename, file_like_obj=None):
@@ -110,9 +119,9 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         """
         img = self._img_cache.get(filename, None)
         if img is None:
-            if file_like_obj:
-                img = pyglet.image.load(filename, file_like_obj,
-                                        pyglet.image.codecs.get_decoders("*.png")[0])
+            if file_like_obj is not None:
+                # TODO: oder decoders???
+                img = pyglet.image.load(filename, file_like_obj, pyglet.image.codecs.get_decoders("*.png")[0])
             else:
                 # add the file to the resources so it goes into the same texture atlas
                 directory_name = os.path.dirname(filename)
@@ -148,47 +157,64 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         
         """
         source_img = self._load_image(filename)
+
+        width = source_img.width
+        height = source_img.height
         # ISSUE 16 fixed wrong sized tilesets
         # ISSUE 20 fixed messed up tiles for pyglet
 
-        # height = (source_img.height // tile_height) * tile_height
-        # width = (source_img.width // tile_width) * tile_width
-        # images = []
-        # # Reverse the map column reading to compensate for pyglets y-origin.
-        # for y in range(height - tile_height, margin - tile_height, -tile_height - spacing):
-        #     for x in range(margin, width, tile_width + spacing):
-        #         img_part = self._load_image_part(filename, x, y - spacing, tile_width, tile_height)
-        #         images.append(img_part)
+        tile_width_spacing = tile_width + spacing
+        width = (width // tile_width_spacing) * tile_width_spacing
 
-        cropped_width = source_img.width - (margin * 2)
-        if cropped_width == tile_width:
-            tiles_x = 1
-        else:
-            # Basic math equation to determine the number of tiles inside a row
-            # 1) tiles_x * tile_width + (tiles_x-1) * spacing == cropped_width
-            # 2) cropped_width == tiles_x * (tile_width + spacing) - spacing
-            tiles_x = (cropped_width + spacing) / (tile_width + spacing)
-        cropped_height = source_img.height - (margin * 2)
-        if cropped_height == tile_height:
-            tiles_y = 1
-        else:
-            tiles_y = (cropped_height + spacing) / (tile_height + spacing)
-        assert tiles_x % 1 == 0 and tiles_y % 1 == 0, "Bad size for {}" \
-                                                      " : image {}x{}, tile {}x{}, margin {}, spacing {}".format(
-            filename, source_img.width, source_img.height,
-            tile_width, tile_height, margin, spacing)
-        tiles_x = int(tiles_x)
-        tiles_y = int(tiles_y)
+        tile_height_spacing = tile_height + spacing
+        height = (height // tile_height_spacing) * tile_height_spacing
 
-        # Reverse the map column reading to compensate for pyglet's y-origin.
+        # compensate that we start at the other y end to compensate for pyglets y direction
+        height_diff = source_img.height - height
         images = []
-        for y in range(tiles_y - 1, -1, -1):
-            for x in range(tiles_x):
-                img_part = self._load_image_part(filename,
-                                                 margin + x * (tile_width + spacing),
-                                                 margin + y * (tile_height + spacing), tile_width, tile_height)
+        for y_pos in reversed(range(margin + height_diff, height, tile_height_spacing)):
+            for x_pos in range(margin, width, tile_width_spacing):
+                img_part = self._load_image_part(filename, x_pos, y_pos, tile_width, tile_height)
+
+                # TODO: why does this work? and now the tiles center is at the position coordinates??
+                img_part.anchor_x = tile_width // 2
+                img_part.anchor_y = tile_height // 2
+
                 images.append(img_part)
         return images
+
+
+        # cropped_width = source_img.width - (margin * 2)
+        # if cropped_width == tile_width:
+        #     tiles_x = 1
+        # else:
+        #     # Basic math equation to determine the number of tiles inside a row
+        #     # 1) tiles_x * tile_width + (tiles_x-1) * spacing == cropped_width
+        #     # 2) cropped_width == tiles_x * (tile_width + spacing) - spacing
+        #     tiles_x = (cropped_width + spacing) / (tile_width + spacing)
+        # cropped_height = source_img.height - (margin * 2)
+        # if cropped_height == tile_height:
+        #     tiles_y = 1
+        # else:
+        #     tiles_y = (cropped_height + spacing) / (tile_height + spacing)
+        # # assert tiles_x % 1 == 0 and tiles_y % 1 == 0, "Bad size for {}" \
+        # #                                               " : image {}x{}, tile {}x{}, margin {}, spacing {}".format(
+        # #     filename, source_img.width, source_img.height,
+        # #     tile_width, tile_height, margin, spacing)
+        # tiles_x = int(tiles_x)
+        # tiles_y = int(tiles_y)
+        #
+        # # Reverse the map column reading to compensate for pyglet's y-origin.
+        # images = []
+        # for y in range(tiles_y - 1, -1, -1):
+        #     for x in range(tiles_x):
+        #         img_part = self._load_image_part(filename,
+        #                                          margin + x * (tile_width + spacing),
+        #                                          margin + y * (tile_height + spacing), tile_width, tile_height)
+        #         img_part.anchor_x = tile_width // 2
+        #         img_part.anchor_y = tile_height // 2
+        #         images.append(img_part)
+        # return images
 
     def _load_image_file_like(self, file_like_obj):
         """Loads a file-like object and returns its subclassed AbstractImage."""
