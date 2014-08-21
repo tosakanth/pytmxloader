@@ -734,13 +734,14 @@ class TileMapParser(object):
     def _get_tile_set(self, tile_set_node, tile_set, base_path, world_map):
         self._build_tile_set_images(tile_set_node, tile_set, base_path)
         firstgid = int(tile_set.firstgid)
-        for image in tile_set.images:
-            for id in range(0, (int(image.width) // int(tile_set.tilewidth)) * (int(image.height) // int(tile_set.tileheight))):
-                gid = firstgid + id
-                # TODO: cell creation should be lazy done when layers are read in????
-                cell = Cell(gid, tile_set)
-                cell.properties = dict(tile_set.properties)
-                world_map.tiles[gid] = cell
+        # for image in tile_set.images:
+        # TODO: can't rely on image.width and image.height because they are optional
+        #     for id in range(0, (int(image.width) // int(tile_set.tilewidth)) * (int(image.height) // int(tile_set.tileheight))):
+        #         gid = firstgid + id
+        #         # TODO: cell creation should be lazy done when layers are read in????
+        #         cell = Cell(gid, tile_set)
+        #         cell.properties = dict(tile_set.properties)
+        #         world_map.tiles[gid] = cell
         for node in self._get_nodes(tile_set_node.childNodes, 'tile'):
             self._build_tile_set_tile(node, tile_set, world_map)
         return tile_set

@@ -7,10 +7,10 @@
   <property name="name" value="Tulimshar"/>
  </properties>
  <tileset firstgid="1" name="Desert1" tilewidth="32" tileheight="32">
-  <image source="graphics/tiles/desert1.png" width="512" height="512"/>
+  <image source="graphics/tiles/desert1.png"/>
  </tileset>
  <tileset firstgid="257" name="Desert2" tilewidth="32" tileheight="32">
-  <image source="graphics/tiles/desert2.png" width="512" height="512"/>
+  <image source="graphics/tiles/desert2.png"/>
  </tileset>
  <tileset firstgid="513" name="Desert x2" tilewidth="32" tileheight="64">
   <image source="graphics/tiles/desert_x2.png" width="512" height="64"/>

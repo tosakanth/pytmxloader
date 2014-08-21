@@ -24,7 +24,7 @@ Minimal OpenGL used. (Less of a learning curve.)
 
 # Versioning scheme based on: http://en.wikipedia.org/wiki/Versioning#Designating_development_stage
 #
-# +-- api change, probably incompatible with older versions
+#   +-- api change, probably incompatible with older versions
 #   |     +-- enhancements but no api change
 #   |     |
 # major.minor[.build[.revision]]
@@ -78,30 +78,28 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         tmxreader.AbstractResourceLoader.load(self, tile_map)
         # ISSUE 17: flipped tiles
         for layer in self.world_map.layers:
-            if not layer.is_object_group:
-                for gid in layer.decoded_content:
-                    if gid not in self.indexed_tiles:
-                        if gid & self.FLIP_X or gid & self.FLIP_Y or gid & self.FLIP_DIAGONAL:
-                            image_gid = gid & ~(self.FLIP_X | self.FLIP_Y | self.FLIP_DIAGONAL)
-                            offset_x, offset_y, img = self.indexed_tiles[image_gid]
-                            # TODO: how to flip it? this does mix textures and image classes
-                            # img = copy.deepcopy(img)
-                            tex2 = img.get_texture()
-                            orig_anchor_x = tex2.anchor_x
-                            orig_anchor_y = tex2.anchor_y
-
-                            tex2.anchor_x = tex2.width // 2
-                            tex2.anchor_y = tex2.height // 2
-                            if gid & self.FLIP_DIAGONAL:
-                                if gid & self.FLIP_X:
-                                    tex2 = tex2.get_transform(False, False, 90)
-                                elif gid & self.FLIP_Y:
-                                    tex2 = tex2.get_transform(False, False, 270)
-                            else:
-                                tex2 = tex2.get_transform(bool(gid & self.FLIP_X), bool(gid & self.FLIP_Y), 0)
-                            tex2.anchor_x = orig_anchor_x
-                            tex2.anchor_y = orig_anchor_y
-                            self.indexed_tiles[gid] = (offset_x, offset_y, tex2)
+            if layer.is_object_group:
+                continue
+            for gid in layer.decoded_content:
+                if gid not in self.indexed_tiles:
+                    if gid & self.FLIP_X or gid & self.FLIP_Y or gid & self.FLIP_DIAGONAL:
+                        image_gid = gid & ~(self.FLIP_X | self.FLIP_Y | self.FLIP_DIAGONAL)
+                        offset_x, offset_y, img = self.indexed_tiles[image_gid]
+                        tex = img.get_texture()
+                        orig_anchor_x = tex.anchor_x
+                        orig_anchor_y = tex.anchor_y
+                        tex.anchor_x = tex.width / 2
+                        tex.anchor_y = tex.height / 2
+                        if gid & self.FLIP_DIAGONAL:
+                            if gid & self.FLIP_X:
+                                tex2 = tex.get_transform(rotate=90)
+                            elif gid & self.FLIP_Y:
+                                tex2 = tex.get_transform(rotate=270)
+                        else:
+                            tex2 = tex.get_transform(flip_x=bool(gid & self.FLIP_X), flip_y=bool(gid & self.FLIP_Y))
+                        tex2.anchor_x = tex.anchor_x = orig_anchor_x
+                        tex2.anchor_y = tex.anchor_y = orig_anchor_y
+                        self.indexed_tiles[gid] = (offset_x, offset_y, tex2)
 
     def _load_image(self, filename, file_like_obj=None):
         """Load a single image.
@@ -158,6 +156,7 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         """
         source_img = self._load_image(filename)
 
+        # Reverse the map column reading to compensate for pyglet's y-origin.
         width = source_img.width
         height = source_img.height
         # ISSUE 16 fixed wrong sized tilesets
@@ -175,46 +174,8 @@ class ResourceLoaderPyglet(tmxreader.AbstractResourceLoader):
         for y_pos in reversed(range(margin + height_diff, height, tile_height_spacing)):
             for x_pos in range(margin, width, tile_width_spacing):
                 img_part = self._load_image_part(filename, x_pos, y_pos, tile_width, tile_height)
-
-                # TODO: why does this work? and now the tiles center is at the position coordinates??
-                img_part.anchor_x = tile_width // 2
-                img_part.anchor_y = tile_height // 2
-
                 images.append(img_part)
         return images
-
-
-        # cropped_width = source_img.width - (margin * 2)
-        # if cropped_width == tile_width:
-        #     tiles_x = 1
-        # else:
-        #     # Basic math equation to determine the number of tiles inside a row
-        #     # 1) tiles_x * tile_width + (tiles_x-1) * spacing == cropped_width
-        #     # 2) cropped_width == tiles_x * (tile_width + spacing) - spacing
-        #     tiles_x = (cropped_width + spacing) / (tile_width + spacing)
-        # cropped_height = source_img.height - (margin * 2)
-        # if cropped_height == tile_height:
-        #     tiles_y = 1
-        # else:
-        #     tiles_y = (cropped_height + spacing) / (tile_height + spacing)
-        # # assert tiles_x % 1 == 0 and tiles_y % 1 == 0, "Bad size for {}" \
-        # #                                               " : image {}x{}, tile {}x{}, margin {}, spacing {}".format(
-        # #     filename, source_img.width, source_img.height,
-        # #     tile_width, tile_height, margin, spacing)
-        # tiles_x = int(tiles_x)
-        # tiles_y = int(tiles_y)
-        #
-        # # Reverse the map column reading to compensate for pyglet's y-origin.
-        # images = []
-        # for y in range(tiles_y - 1, -1, -1):
-        #     for x in range(tiles_x):
-        #         img_part = self._load_image_part(filename,
-        #                                          margin + x * (tile_width + spacing),
-        #                                          margin + y * (tile_height + spacing), tile_width, tile_height)
-        #         img_part.anchor_x = tile_width // 2
-        #         img_part.anchor_y = tile_height // 2
-        #         images.append(img_part)
-        # return images
 
     def _load_image_file_like(self, file_like_obj):
         """Loads a file-like object and returns its subclassed AbstractImage."""
@@ -245,9 +206,10 @@ def demo_pyglet(file_name):
     # window and the update function. Note that the position is in integers to
     # match Pyglet Sprites. Using floating-point numbers causes graphical
     # problems. See http://groups.google.com/group/pyglet-users/browse_thread/thread/52f9ae1ef7b0c8fa?pli=1
-    delta = [200, -world_map.pixel_height + 150]
+    delta = [200, -world_map.pixel_height+150, 0]
     frames_per_sec = 1.0 / 30.0
-    window = pyglet.window.Window(vsync=False)
+    # Disable vsync is mandatory for fps > 60
+    window = pyglet.window.Window(vsync=False, width=1024, height=768)
     fps_display = pyglet.clock.ClockDisplay()
     pyglet.clock.set_fps_limit(0)
 
@@ -258,7 +220,7 @@ def demo_pyglet(file_name):
         # Reset the "eye" back to the default location.
         glLoadIdentity()
         # Move the "eye" to the current location on the map.
-        glTranslatef(delta[0], delta[1], 0.0)
+        glTranslatef(*delta)
         # TODO: [21:03]	thorbjorn: DR0ID_: You can generally determine the range of tiles that are visible before your drawing loop, which is much faster than looping over all tiles and checking whether it is visible for each of them.
         # [21:06]	DR0ID_: probably would have to rewrite the pyglet demo to use a similar render loop as you mentioned
         # [21:06]	thorbjorn: Yeah.
@@ -273,8 +235,13 @@ def demo_pyglet(file_name):
 
         batch.draw()
 
-        glLoadIdentity()
-        fps_display.draw()
+
+        pyglet.graphics.draw(len(coord_points) // 2, pyglet.gl.GL_POINTS,
+            ('v2i', coord_points)
+        )
+        # fps_display cost a bit of performances, use print every second instead
+        # glLoadIdentity()
+        # fps_display.draw()
 
     keys = pyglet.window.key.KeyStateHandler()
     window.push_handlers(keys)
@@ -300,6 +267,7 @@ def demo_pyglet(file_name):
     # Generate the graphics for every visible tile.
     batch = pyglet.graphics.Batch()
     sprites = []
+    coord_points = tuple()
     group_num = 0
     for layer in world_map.layers:
         if not layer.visible:
@@ -324,10 +292,14 @@ def demo_pyglet(file_name):
                                                         world_map.tileheight * (layer.height - y_tile),
                                                         batch=batch,
                                                         group=group))
+                coord_points = coord_points + (world_map.tilewidth * x_tile, world_map.tileheight * (layer.height - y_tile))
 
     pyglet.clock.schedule_interval(update, frames_per_sec)
+    def print_fps(delta):
+        print("FPS : " + str(pyglet.clock.get_fps()))
+    pyglet.clock.schedule_interval(print_fps, 1)
+    pyglet.clock.set_fps_limit(0)
     pyglet.app.run()
-
 
 #  -----------------------------------------------------------------------------
 
