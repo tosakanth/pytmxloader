@@ -229,6 +229,7 @@ class SpriteLayer(object):
         self.layer_idx = tile_layer_idx
         _layer = _world_map.layers[tile_layer_idx]
 
+        self.name = _layer.name
         self.tilewidth = _world_map.tilewidth
         self.tileheight = _world_map.tileheight
         self.num_tiles_x = _world_map.width
@@ -242,8 +243,8 @@ class SpriteLayer(object):
         self.scale_x = 1.0
         self.scale_y = 1.0
 
-        # TODO: either change paralax_* attributes to properties
-        # or make them private
+        # TODO: either change parallax_* attributes to properties or make them private
+        # TODO: correct typo! but that would be a breaking change...
         self.paralax_factor_x = 1.0
         self.paralax_factor_y = 1.0
 
