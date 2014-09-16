@@ -206,7 +206,7 @@ def demo_pyglet(file_name):
     # window and the update function. Note that the position is in integers to
     # match Pyglet Sprites. Using floating-point numbers causes graphical
     # problems. See http://groups.google.com/group/pyglet-users/browse_thread/thread/52f9ae1ef7b0c8fa?pli=1
-    delta = [200, -world_map.pixel_height+150, 0]
+    delta = [200, -world_map.pixel_height + 150, 0]
     frames_per_sec = 1.0 / 30.0
     # Disable vsync is mandatory for fps > 60
     window = pyglet.window.Window(vsync=False, width=1024, height=768)
@@ -235,9 +235,8 @@ def demo_pyglet(file_name):
 
         batch.draw()
 
-
         pyglet.graphics.draw(len(coord_points) // 2, pyglet.gl.GL_POINTS,
-            ('v2i', coord_points)
+                             ('v2i', coord_points)
         )
         # fps_display cost a bit of performances, use print every second instead
         # glLoadIdentity()
@@ -287,16 +286,21 @@ def demo_pyglet(file_name):
                     # The loader needed to load the images upside-down to match
                     # the tiles to their correct images. This reversal must be
                     # done again to render the rows in the correct order.
-                    sprites.append(pyglet.sprite.Sprite(image_file,
-                                                        world_map.tilewidth * x_tile,
-                                                        world_map.tileheight * (layer.height - y_tile),
-                                                        batch=batch,
-                                                        group=group))
-                coord_points = coord_points + (world_map.tilewidth * x_tile, world_map.tileheight * (layer.height - y_tile))
+                    sprites.append(
+                        pyglet.sprite.Sprite(image_file,
+                                             world_map.tilewidth * x_tile,
+                                             world_map.tileheight * (layer.height - y_tile),
+                                             batch=batch,
+                                             group=group)
+                    )
+                coord_points = coord_points + (
+                    world_map.tilewidth * x_tile, world_map.tileheight * (layer.height - y_tile))
 
     pyglet.clock.schedule_interval(update, frames_per_sec)
+
     def print_fps(delta):
         print("FPS : " + str(pyglet.clock.get_fps()))
+
     pyglet.clock.schedule_interval(print_fps, 1)
     pyglet.clock.set_fps_limit(0)
     pyglet.app.run()

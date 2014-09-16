@@ -108,7 +108,7 @@ def demo_pygame(file_name):
     # variables for the main loop
     clock = pygame.time.Clock()
     running = True
-    speed = 0.075
+    speed = 0.075 * 10
     # set up timer for fps printing
     pygame.time.set_timer(pygame.USEREVENT, 1000)
 
@@ -160,7 +160,7 @@ def demo_pygame(file_name):
         renderer.set_camera_position(hero.rect.centerx, hero.rect.centery)
 
         # clear screen, might be left out if every pixel is redrawn anyway
-        screen.fill((0, 0, 0))
+        screen.fill((255, 0, 255))
 
         # render the map
         for sprite_layer in sprite_layers:
